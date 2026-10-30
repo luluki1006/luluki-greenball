@@ -33,7 +33,7 @@ function isRainy(day) {
 /**
  * 计算某植物的浇水计划
  * @param {object} plant 植物档案（含 waterLevel / baseDays / lastWatered / plantedDate）
- * @param {object|null} weather 和风天气返回 { now, daily }
+ * @param {object|null} weather 天气数据 { now, daily }（来源 Open-Meteo）
  */
 export function computeWatering(plant, weather) {
   const level = WATER_LEVEL[plant.waterLevel] || WATER_LEVEL.mid;
