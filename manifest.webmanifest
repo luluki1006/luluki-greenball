@@ -1,0 +1,18 @@
+{
+  "name": "花草养护助手",
+  "short_name": "花草助手",
+  "description": "天气联动浇水提醒、拍照/订单截图自动添加植物、成长打卡",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f4",
+  "theme_color": "#2e7d32",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
