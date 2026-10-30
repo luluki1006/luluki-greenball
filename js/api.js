@@ -113,14 +113,23 @@ export function fileToDataURL(file) {
   });
 }
 
-// 尝试从模型返回文本里解析 JSON（容错：截取到首个 { 与末个 }）
+// 尝试从模型返回文本里解析 JSON（容错：支持对象/数组、去除 Markdown 代码围栏、尾随逗号）
 export function extractJSON(text) {
   if (!text) return null;
-  try { return JSON.parse(text); } catch (e) { /* 继续 */ }
-  const s = text.indexOf('{');
-  const e = text.lastIndexOf('}');
-  if (s !== -1 && e !== -1 && e > s) {
-    try { return JSON.parse(text.slice(s, e + 1)); } catch (e2) { /* ignore */ }
+  let t = String(text).trim();
+  // 去掉 ```json ... ``` 或 ``` ... ``` 围栏
+  t = t.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  try { return JSON.parse(t); } catch (e) { /* 继续 */ }
+  const sArr = t.indexOf('['), eArr = t.lastIndexOf(']');
+  const sObj = t.indexOf('{'), eObj = t.lastIndexOf('}');
+  const trySlice = (s, e) => {
+    if (s === -1 || e === -1 || e <= s) return null;
+    let sub = t.slice(s, e + 1).replace(/,(\s*[}\]])/g, '$1'); // 去尾随逗号
+    try { return JSON.parse(sub); } catch (err) { return null; }
+  };
+  // 优先取数组（订单/列表场景），否则取对象
+  if (sArr !== -1 && (sObj === -1 || sArr < sObj)) {
+    const v = trySlice(sArr, eArr); if (v) return v;
   }
-  return null;
+  return trySlice(sObj, eObj);
 }
