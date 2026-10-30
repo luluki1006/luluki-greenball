@@ -1,58 +1,73 @@
-// 纯前端接口：浏览器直接调用和风天气 / 通义千问（两家均支持跨域 CORS）
-// 密钥只存在你本机（设置里填写，存 IndexedDB），不上传任何服务器。
-// 适合个人自用：密钥在你的设备上、调你自己的账号，安全可控。
+// 纯前端接口：浏览器直接调用 Open-Meteo（天气，免 Key）与 通义千问（视觉识别）。
+// 天气数据来自 Open-Meteo，完全免费、无需注册、无需密钥、支持浏览器跨域。
+// 通义千问 Key 只存在你本机（设置里填写，存 IndexedDB），不上传任何服务器。
 
-const QW_GEO = 'https://geoapi.qweather.com/v2/city/lookup';
-const QW_NOW = 'https://devapi.qweather.com/v7/weather/now';
-const QW_7D = 'https://devapi.qweather.com/v7/weather/7d';
+const OM_GEO = 'https://geocoding-api.open-meteo.com/v1/search';
+const OM_FC = 'https://api.open-meteo.com/v1/forecast';
 const DS_EP = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
 const VL_MODEL = 'qwen-vl-plus'; // 如需更高精度可改为 'qwen-vl-max'
 
 // location 支持 "经度,纬度" 或直接城市名（如 "北京"）
-async function resolveLocation(location, key) {
-  if (/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(location.trim())) return location.trim();
-  const r = await fetch(`${QW_GEO}?location=${encodeURIComponent(location)}&key=${encodeURIComponent(key)}`);
-  const d = await r.json();
-  if (d.code !== '200' || !d.location || !d.location.length) {
-    throw new Error(d.message || ('城市 "' + location + '" 未找到，试试"经度,纬度"'));
+async function resolveLatLon(location) {
+  const s = location.trim();
+  if (/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(s)) {
+    const [lon, lat] = s.split(',').map(Number);
+    return { lat, lon };
   }
-  return d.location[0].id;
+  const r = await fetch(`${OM_GEO}?name=${encodeURIComponent(s)}&count=1&language=zh`);
+  const d = await r.json();
+  if (!d.results || !d.results.length) {
+    throw new Error('城市 "' + s + '" 未找到，试试"经度,纬度"或换个写法');
+  }
+  return { lat: d.results[0].latitude, lon: d.results[0].longitude };
 }
 
-export async function getWeather(location, key) {
-  if (!key) throw new Error('请先在“设置”里填写和风天气 Key');
-  const loc = await resolveLocation(location, key);
-  const [nowR, d7R] = await Promise.all([
-    fetch(`${QW_NOW}?location=${encodeURIComponent(loc)}&key=${encodeURIComponent(key)}`),
-    fetch(`${QW_7D}?location=${encodeURIComponent(loc)}&key=${encodeURIComponent(key)}`),
-  ]);
-  const nowD = await nowR.json();
-  const d7D = await d7R.json();
-  if (nowD.code !== '200') throw new Error(nowD.message || ('天气实况失败(' + nowD.code + ')'));
-  if (d7D.code !== '200') throw new Error(d7D.message || ('天气预报失败(' + d7D.code + ')'));
+// WMO 天气代码 → 中文描述（Open-Meteo 用 WMO code 表示天气现象）
+const WMO = {
+  0:'晴',1:'晴间多云',2:'局部多云',3:'阴',
+  45:'雾',48:'雾凇',
+  51:'小毛毛雨',53:'毛毛雨',55:'强毛毛雨',56:'冻毛毛雨',57:'冻毛毛雨',
+  61:'小雨',63:'中雨',65:'大雨',66:'冻雨',67:'冻雨',
+  71:'小雪',73:'中雪',75:'大雪',77:'雪粒',
+  80:'阵雨',81:'阵雨',82:'强阵雨',
+  85:'阵雪',86:'强阵雪',
+  95:'雷阵雨',96:'雷阵雨伴冰雹',99:'强雷阵雨伴冰雹',
+};
+const wmoText = (c) => WMO[c] ?? '未知';
 
-  const now = nowD.now || {};
-  const daily = (d7D.daily || []).map((d) => ({
-    date: d.fxDate,
-    tempMax: d.tempMax,
-    tempMin: d.tempMin,
-    textDay: d.textDay,
-    textNight: d.textNight,
-    humidity: d.humidity,
-    precip: Number(d.precip || 0),
+export async function getWeather(location) {
+  if (!location) throw new Error('请先在“设置”里填写所在地或使用定位');
+  const { lat, lon } = await resolveLatLon(location);
+  const url = `${OM_FC}?latitude=${lat}&longitude=${lon}` +
+    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_mean' +
+    '&timezone=auto&forecast_days=7';
+  const r = await fetch(url);
+  const d = await r.json();
+  if (d.error) throw new Error(d.reason || '天气获取失败');
+  const now = d.current || {};
+  const daily = d.daily || {};
+  const dates = daily.time || [];
+  const dailyArr = dates.map((date, i) => ({
+    date,
+    tempMax: daily.temperature_2m_max ? daily.temperature_2m_max[i] : null,
+    tempMin: daily.temperature_2m_min ? daily.temperature_2m_min[i] : null,
+    textDay: wmoText(daily.weather_code ? daily.weather_code[i] : null),
+    textNight: wmoText(daily.weather_code ? daily.weather_code[i] : null),
+    humidity: daily.relative_humidity_2m_mean ? daily.relative_humidity_2m_mean[i] : null,
+    precip: daily.precipitation_sum ? Number(daily.precipitation_sum[i] || 0) : 0,
   }));
-
   return {
-    location: location,
+    location,
     now: {
-      temp: now.temp,
-      text: now.text,
-      humidity: now.humidity,
-      feelsLike: now.feelsLike,
-      windScale: now.windScale,
+      temp: now.temperature_2m,
+      text: wmoText(now.weather_code),
+      humidity: now.relative_humidity_2m,
+      feelsLike: now.apparent_temperature,
+      windScale: null,
     },
-    daily,
-    source: 'qweather',
+    daily: dailyArr,
+    source: 'open-meteo',
   };
 }
 
