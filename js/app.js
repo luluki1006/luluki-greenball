@@ -399,6 +399,7 @@ async function renderSettings() {
       <h4>关于</h4>
       <p>花草养护助手 v0.1 · 数据全部本地存储。</p>
       <p>天气：Open-Meteo（免 Key）· 识别：通义千问 VL</p>
+      <button class="btn btn--ghost" data-action="open-guide">📖 查看图文指引</button>
     </div>
   `;
 }
@@ -445,6 +446,7 @@ async function onViewClick(e) {
   }
   if (action === 'toggle-notify') return toggleNotify();
   if (action === 'export') return exportData();
+  if (action === 'open-guide') { window.open('key-guide.html', '_blank', 'noopener'); return; }
 
   // 订单：千问网页免 Key 识别
   if (action === 'qwen-order') return openQwenOrder();
