@@ -5,7 +5,7 @@ import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
 import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays } from './engine.js';
 
 const state = {
-  settings: { location: '', qweatherKey: '', dashscopeKey: '' },
+  settings: { location: '', dashscopeKey: '' },
   weather: null,          // { now, daily }
   weatherLoadedAt: 0,
   route: 'home',
@@ -73,7 +73,6 @@ function resizeImage(dataURL, maxDim = 1024, quality = 0.8) {
 // ---------------- 初始化 ----------------
 async function init() {
   state.settings.location = (await SStore.get('location')) || '';
-  state.settings.qweatherKey = (await SStore.get('qweatherKey')) || '';
   state.settings.dashscopeKey = (await SStore.get('dashscopeKey')) || '';
   const wc = await SStore.get('weatherCache');
   if (wc && Date.now() - wc.at < WEATHER_TTL) { state.weather = wc.data; state.weatherLoadedAt = wc.at; }
@@ -120,7 +119,7 @@ async function refreshWeather(force) {
   if (!force && state.weather && Date.now() - state.weatherLoadedAt < WEATHER_TTL) return;
   loading(true, '获取天气中…');
   try {
-    const data = await getWeather(state.settings.location, state.settings.qweatherKey);
+    const data = await getWeather(state.settings.location);
     state.weather = data;
     state.weatherLoadedAt = Date.now();
     await SStore.set('weatherCache', { at: state.weatherLoadedAt, data });
@@ -145,7 +144,7 @@ async function renderHome() {
          <div class="weather__main">${esc(w.text)} <b>${w.temp}℃</b></div>
          <div class="weather__sub">湿度 ${w.humidity}% · 体感 ${w.feelsLike ?? '—'}℃</div>
        </div>`
-    : `<div class="card weather weather--empty">未获取天气 · <a data-action="goto-settings">去设置所在地</a></div>`;
+    : `<div class="card weather weather--empty">未获取天气 · <a data-action="geo">📍 点此开启定位</a></div>`;
 
   const dueHtml = due.length
     ? due.map(({ plant, plan }) => `
@@ -338,7 +337,7 @@ async function renderSettings() {
   return `
     <div class="card">
       <h4>📍 所在地</h4>
-      <p class="hint">用于获取实时天气，自动调整浇水频率。可点按钮用定位，或手动填“经度,纬度”/城市名。</p>
+      <p class="hint">获取实时天气、自动调整浇水频率。<b>无需任何天气 Key</b>：点「定位」用手机 GPS，或填城市名（如 北京）。</p>
       <div class="row">
         <input id="loc-input" value="${esc(state.settings.location)}" placeholder="例如 116.40,39.90 或 北京" />
         <button class="btn btn--ghost" data-action="geo">定位</button>
@@ -348,13 +347,10 @@ async function renderSettings() {
     </div>
 
     <div class="card">
-      <h4>🔑 API 密钥（仅存本机）</h4>
-      <p class="hint">不填也能运行界面；填了才能用天气与拍照识别。密钥只存在你手机/电脑浏览器里，不会上传。</p>
-      <label>和风天气 Key
-        <input id="qw-input" value="${esc(state.settings.qweatherKey)}" placeholder="QWEATHER_KEY" />
-      </label>
+      <h4>🔑 通义千问 VL Key（仅存本机）</h4>
+      <p class="hint">天气功能已免 Key，无需配置。此 Key 仅用于「拍照识别植物」和「病虫害诊断」。不填也能手动添加与打卡。密钥只存在你手机/电脑浏览器里，不会上传。</p>
       <label>通义千问 VL Key
-        <input id="ds-input" value="${esc(state.settings.dashscopeKey)}" placeholder="DASHSCOPE_KEY" />
+        <input id="ds-input" value="${esc(state.settings.dashscopeKey)}" placeholder="sk- 开头" />
       </label>
       <button class="btn btn--primary" data-action="save-keys">保存密钥</button>
     </div>
@@ -374,7 +370,7 @@ async function renderSettings() {
     <div class="card about">
       <h4>关于</h4>
       <p>花草养护助手 v0.1 · 数据全部本地存储。</p>
-      <p>天气：和风天气 · 识别：通义千问 VL</p>
+      <p>天气：Open-Meteo（免 Key）· 识别：通义千问 VL</p>
     </div>
   `;
 }
@@ -414,9 +410,7 @@ async function onViewClick(e) {
     return;
   }
   if (action === 'save-keys') {
-    state.settings.qweatherKey = $('#qw-input').value.trim();
     state.settings.dashscopeKey = $('#ds-input').value.trim();
-    await SStore.set('qweatherKey', state.settings.qweatherKey);
     await SStore.set('dashscopeKey', state.settings.dashscopeKey);
     toast('密钥已保存（仅本机）');
     return;
@@ -546,7 +540,7 @@ async function doGeolocation() {
       const { longitude, latitude } = pos.coords;
       state.settings.location = `${longitude.toFixed(2)},${latitude.toFixed(2)}`;
       await SStore.set('location', state.settings.location);
-      $('#loc-input').value = state.settings.location;
+      if ($('#loc-input')) $('#loc-input').value = state.settings.location;
       loading(false);
       toast('已定位');
       refreshWeather(true);
