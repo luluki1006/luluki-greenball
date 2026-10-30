@@ -223,11 +223,39 @@ function renderAdd() {
     </div>
 
     <div class="add-panel" data-panel="order" hidden>
-      <p class="hint">上传电商订单截图，自动提取里面买的花草并批量入库。</p>
-      <label class="upload">
-        <input type="file" accept="image/*" data-action="fileOrder" hidden />
-        <span>🧾 选择订单截图</span>
-      </label>
+      <p class="hint">两种方式任选其一，<b>都不需要填 Key</b>：</p>
+
+      <div class="route-card">
+        <b>① 用千问网页免费识别（推荐）</b>
+        <p class="hint">点按钮自动打开千问网页并复制指令 → 在千问里粘贴指令、上传订单截图 → 把结果复制回来粘贴到下方，自动提取植物。</p>
+        <button class="btn btn--primary" data-action="qwen-order" type="button">📋 打开千问并复制指令</button>
+        <div id="qwen-order-box" hidden>
+          <ol class="steps">
+            <li>在千问网页粘贴下面的<b>指令</b>（已自动复制；没复制就点「复制指令」）</li>
+            <li>上传你的订单截图，等它返回植物列表</li>
+            <li>把结果<b>复制</b>，粘贴到下方「识别结果」，点「解析并预览」</li>
+          </ol>
+          <p class="hint">指令（只读）：</p>
+          <textarea id="qwen-instruction" rows="4" readonly>请识别这张购物订单或商品详情截图里的植物、花草、绿植、盆栽或种子类商品。
+只输出一个 JSON 数组，不要解释，也不要用 Markdown 代码块。格式示例：
+[{"name":"绿萝","quantity":1},{"name":"龟背竹","quantity":1}]
+如果完全没有植物类商品，直接输出 []。</textarea>
+          <button class="btn btn--ghost" data-action="copy-instruction" type="button">复制指令</button>
+          <p class="hint">千问识别结果粘贴到这里：</p>
+          <textarea id="qwen-order-text" rows="5" placeholder="在此粘贴千问返回的识别结果（JSON 或纯文字均可）"></textarea>
+          <button class="btn btn--primary" data-action="parse-qwen-order" type="button">解析并预览</button>
+        </div>
+      </div>
+
+      <div class="route-card">
+        <b>② 本机直传（需填写通义千问 VL Key）</b>
+        <p class="hint">已在「⚙️ 设置」填了 Key 时可用，全自动识别、无需跳转。</p>
+        <label class="upload">
+          <input type="file" accept="image/*" data-action="fileOrder" hidden />
+          <span>🧾 选择订单截图</span>
+        </label>
+      </div>
+
       <div id="order-result"></div>
     </div>
 
@@ -418,6 +446,11 @@ async function onViewClick(e) {
   if (action === 'toggle-notify') return toggleNotify();
   if (action === 'export') return exportData();
 
+  // 订单：千问网页免 Key 识别
+  if (action === 'qwen-order') return openQwenOrder();
+  if (action === 'copy-instruction') return copyInstruction();
+  if (action === 'parse-qwen-order') return parseQwenOrder();
+
   // add 页切换面板
   if (t.classList.contains('chip')) {
     document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c === t));
@@ -530,6 +563,87 @@ async function handleOrderPhoto(dataURL) {
   } finally {
     loading(false);
   }
+}
+
+// ---------------- 订单：千问网页免 Key 识别 ----------------
+const QWEN_CHAT_URL = 'https://chat.qwen.ai';
+
+async function openQwenOrder() {
+  const instr = document.getElementById('qwen-instruction');
+  const box = document.getElementById('qwen-order-box');
+  const instruction = instr ? instr.value : '';
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(instruction);
+      copied = true;
+    }
+  } catch (e) { /* 忽略，走手动复制 */ }
+  window.open(QWEN_CHAT_URL, '_blank', 'noopener');
+  if (box) box.hidden = false;
+  toast(copied ? '指令已复制，去千问粘贴并上传截图' : '已打开千问，请手动复制下方指令');
+}
+
+async function copyInstruction() {
+  const instr = document.getElementById('qwen-instruction');
+  if (!instr) return;
+  try {
+    await navigator.clipboard.writeText(instr.value);
+    toast('指令已复制');
+  } catch (e) {
+    instr.focus(); instr.select();
+    toast('请在上方手动复制（已选中）');
+  }
+}
+
+// 从自由文本里找植物名附近的数量（×2 / 2盆 / 2棵 等）
+function findQuantity(text, name) {
+  const idx = text.indexOf(name);
+  if (idx === -1) return 1;
+  const tail = text.slice(idx, idx + 24);
+  const m = tail.match(/[×xX*]?\s*(\d+)\s*(?:盆|棵|株|个|件|支|束)?/);
+  if (m) { const n = parseInt(m[1], 10); if (n > 0 && n < 1000) return n; }
+  return 1;
+}
+
+// JSON 解析失败时的兜底：扫描文本里出现的已知植物名
+function extractPlantsFromText(text) {
+  const found = [];
+  const seen = new Set();
+  for (const p of PLANTS) {
+    const names = [p.name, ...(p.alias || [])];
+    for (const nm of names) {
+      if (nm && text.includes(nm) && !seen.has(p.name)) {
+        found.push({ name: p.name, quantity: findQuantity(text, nm) });
+        seen.add(p.name);
+        break;
+      }
+    }
+  }
+  return found;
+}
+
+async function parseQwenOrder() {
+  const ta = document.getElementById('qwen-order-text');
+  if (!ta) return;
+  const text = ta.value.trim();
+  if (!text) return toast('请先粘贴千问的识别结果');
+  let arr = extractJSON(text);
+  if (arr && arr.name && !Array.isArray(arr)) arr = [arr];      // 单对象兼容
+  if (!Array.isArray(arr) || !arr.length) arr = extractPlantsFromText(text);
+  if (!Array.isArray(arr) || !arr.length) {
+    $('#order-result').innerHTML = `<div class="card err">没解析出植物。请确认粘贴的是千问返回的结果；或到「⚙️ 设置」填 Key 用②本机直传。</div>`;
+    return;
+  }
+  const payload = arr.map((it) => ({ name: (it && it.name) || it, quantity: Number((it && it.quantity) || 1) || 1 }));
+  const rows = payload.map((it, i) => {
+    const rule = findRule(it.name);
+    const level = rule ? rule.waterLevel : 'mid';
+    return `<label class="order-row"><input type="checkbox" data-i="${i}" checked />
+      <span>${esc(it.name)} ×${it.quantity} ${levelBadge(level)}</span></label>`;
+  }).join('');
+  $('#order-result').innerHTML = `<div class="card"><p>识别到以下植物，勾选要入库的：</p>${rows}
+    <button class="btn btn--primary" data-action="import-order" data-json='${esc(JSON.stringify(payload))}'>导入选中</button></div>`;
 }
 
 async function doGeolocation() {
