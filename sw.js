@@ -1,10 +1,11 @@
 // Service Worker：离线缓存 + 让 PWA 可“添加到主屏幕”
-const CACHE = 'plantcare-v5';
+const CACHE = 'plantcare-v6';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon.svg',
+  './img/flower-hero.png',
   './css/styles.css',
   './js/app.js',
   './js/db.js',
