@@ -27,15 +27,7 @@ function levelBadge(level) {
   const lv = WATER_LEVEL[level] || WATER_LEVEL.mid;
   return `<span class="badge" style="background:${lv.color}">${lv.label}</span>`;
 }
-// 按植物类别返回圆形头像图标（不依赖用户上传照片）
-function typeIcon(type) {
-  const m = {
-    rose: '🌹', citrus: '🍋', succulent: '🌵', foliage: '🌿',
-    herb: '🌱', bulb: '🌷', orchid: '🌸', shrub: '🌳',
-    tree: '🌳', carnivorous: '🪤',
-  };
-  return m[type] || '🪴';
-}
+// 植物头像图标统一由 engine.js 的 typeIcon() 提供（同时涵盖植物类别与打卡类型）
 let toastTimer = null;
 function toast(msg, ms = 2200) {
   const t = $('#toast');
@@ -947,7 +939,6 @@ async function openDiagnose(id) {
   }
 }
 
-function typeIcon(t) { return ({ water: '💧', fertilize: '🌱', growth: '📸', diagnosis: '🔍', note: '📝', other: '•' })[t] || '•'; }
 function typeLabel(t) { return ({ water: '浇水', fertilize: '施肥', growth: '打卡', diagnosis: '诊断', note: '笔记', other: '其他' })[t] || '记录'; }
 
 // 植物搜索（plants 页）
