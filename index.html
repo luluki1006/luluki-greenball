@@ -16,16 +16,21 @@
 <body>
   <div id="app">
     <header class="app-bar">
-      <div class="app-bar__title">🌿 花草助手</div>
-      <button id="sync-btn" class="app-bar__action" title="刷新天气与提醒">↻</button>
+      <div class="app-bar__title">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.6 19.4C4.6 11 10.4 4.6 19.4 4.6c0 9-5 14.8-14.8 14.8z"/><path d="M6.4 17.6C9.6 13.6 13 10.6 17.4 7.6"/></svg>
+        花草助手
+      </div>
+      <button id="sync-btn" class="app-bar__action" title="刷新天气与提醒" aria-label="刷新天气与提醒">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.6 12a7.6 7.6 0 1 1-2.2-5.4"/><path d="M20 4.2v4.4h-4.4"/></svg>
+      </button>
     </header>
     <main id="view" class="view"></main>
     <nav class="tabbar">
-      <button class="tab" data-route="home">🏠<span>首页</span></button>
-      <button class="tab" data-route="plants">🪴<span>我的植物</span></button>
-      <button class="tab tab--add" data-route="add">➕<span>添加</span></button>
-      <button class="tab" data-route="calendar">📅<span>养护历</span></button>
-      <button class="tab" data-route="settings">⚙️<span>设置</span></button>
+      <button class="tab" data-route="home"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.2L12 4.8l8 6.4"/><path d="M6.6 10v9.6h10.8V10"/></svg></i><span>首页</span></button>
+      <button class="tab" data-route="plants"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4v-6.2"/><path d="M12 15.6c-3 0-5.2-2.2-5.2-5.2 3 0 5.2 2.2 5.2 5.2z"/><path d="M12 13.2c3 0 5.2-2.2 5.2-5.2-3 0-5.2 2.2-5.2 5.2z"/></svg></i><span>我的植物</span></button>
+      <button class="tab tab--add" data-route="add"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.2v11.6"/><path d="M6.2 12h11.6"/></svg></i><span>添加</span></button>
+      <button class="tab" data-route="calendar"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5.4" width="16" height="14.2" rx="2.6"/><path d="M4 10h16"/><path d="M8.6 3.4v4"/><path d="M15.4 3.4v4"/></svg></i><span>养护历</span></button>
+      <button class="tab" data-route="settings"><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3.6v2.2M12 18.2v2.2M4.9 7.7l1.9 1.1M17.2 15.2l1.9 1.1M4.9 16.3l1.9-1.1M17.2 8.8l1.9-1.1"/></svg></i><span>设置</span></button>
     </nav>
   </div>
   <div id="toast" class="toast"></div>
