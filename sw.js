@@ -1,5 +1,5 @@
 // Service Worker：离线缓存 + 让 PWA 可“添加到主屏幕”
-const CACHE = 'plantcare-v3';
+const CACHE = 'plantcare-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   './js/api.js',
   './js/data.js',
   './js/engine.js',
+  './js/icons.js',
 ];
 
 self.addEventListener('install', (e) => {
