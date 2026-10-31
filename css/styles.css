@@ -192,6 +192,12 @@ form input, form select { width: 100%; margin-top: 4px; padding: 10px; border: 1
 }
 .modal .btn { width: 100%; }
 .modal .prev { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.m-label { display: block; text-align: left; font-size: 13px; color: var(--green-dark); margin: 2px 0; font-weight: 600; }
+.m-label input, .m-label select {
+  width: 100%; box-sizing: border-box; margin-top: 4px; padding: 9px 10px;
+  border: 1px solid #d7e0da; border-radius: 10px; font: inherit; font-weight: 400; color: #333;
+}
+.plant-note { font-size: 12px; color: var(--green); margin-top: 4px; }
 .modal .thumb { width: 100%; max-height: 170px; object-fit: cover; border-radius: 10px; border: 1px solid #e6ece8; }
 
 details.month-item summary { cursor: pointer; font-weight: 600; list-style: none; }
