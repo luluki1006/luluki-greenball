@@ -90,3 +90,102 @@ export function planAll(plants, weather) {
     .map((p) => ({ plant: p, plan: computeWatering(p, weather) }))
     .sort((a, b) => a.plan.daysLeft - b.plan.daysLeft);
 }
+
+// 季节花事（修剪/换盆/施肥时机）+ 实时气温禁忌
+function flowerTasks(season, temp) {
+  const base = {
+    spring: '春季是换盆分株、萌芽前修剪、施基肥的好时机；扦插繁殖也易成活。',
+    summer: '夏季以遮阴防晒、通风降温为主；高温期暂停浓肥与重剪，花后轻剪残花即可。',
+    autumn: '秋季渐凉，剪除枯枝黄叶、清理病残；控水停肥，入室前做好清园。',
+    winter: '冬季防寒保暖为主，低温时不宜换盆与重剪，保持盆土偏干、停肥。',
+  }[season];
+  let caveat = '';
+  if (temp !== null && temp >= 32) caveat = '当前高温（≥32℃），换盆/重剪请延后，等凉爽时再进行。';
+  else if (temp !== null && temp <= 5) caveat = '当前低温（≤5℃），不宜换盆与修剪，以免伤根或冻害。';
+  return { base, caveat };
+}
+
+// 依据天气给出病害风险与预防/喷药建议（天气驱动，并兼顾耐旱植物）
+function diseaseAdvice(plant, temp, hum, daily) {
+  const msgs = [];
+  const willRain = daily.slice(0, 3).some(isRainy);
+  const hArr = daily.slice(0, 3).map((d) => Number(d.humidity)).filter((n) => !isNaN(n));
+  const meanHum = hArr.length ? hArr.reduce((a, b) => a + b, 0) / hArr.length : (hum ?? 50);
+
+  if (temp !== null && temp >= 28 && hum !== null && hum < 50) {
+    msgs.push('高温干燥，红蜘蛛（叶背小白点、叶片失绿）易爆发：多喷雾增湿、用水冲淋叶背，必要时喷阿维菌素');
+  }
+  if (temp !== null && temp >= 18 && temp <= 30 && (meanHum >= 85 || willRain)) {
+    msgs.push('温暖高湿或连雨，白粉病、黑斑病、霜霉病高发：加强通风、避免叶面喷水，雨前/雨后喷多菌灵或百菌清预防');
+  }
+  if (temp !== null && temp <= 12 && meanHum >= 80) {
+    msgs.push('低温高湿，灰霉病风险：控水通风，及时摘除残花病叶');
+  }
+  // 耐旱/多肉植物遇高湿或连雨 → 黑腐、化水
+  if (plant.waterLevel === 'low' && (meanHum >= 80 || willRain)) {
+    msgs.push('多肉/耐旱植物遇高湿或连雨易黑腐、化水：严格控水、避雨、保证通风，勿喷叶面水');
+  }
+  return msgs;
+}
+
+/**
+ * 实时养护建议：把「物种特性 + 当地实时天气」合并成可执行的建议卡片。
+ * 返回 { headline, items:[{icon,title,text}], season }，供植物详情页渲染。
+ * 这是比「通用静态月历」更科学的方式：随真实温度/湿度/降水逐日变化。
+ */
+export function careAdvice(plant, rule, weather) {
+  const plan = computeWatering(plant, weather);
+  const season = seasonOf();
+  const now = weather && weather.now;
+  const temp = now ? Number(now.temp) : null;
+  const hum = now ? Number(now.humidity) : null;
+
+  const items = [];
+
+  // 1) 浇水（实时）：间隔 + computeWatering 已生成的温湿度/降水短语
+  const waterMain = plan.due
+    ? '今天该浇水了'
+    : `约 ${plan.daysLeft} 天后再浇（${plan.nextDate}）`;
+  const waterExtra = plan.reasons.slice();
+  items.push({
+    icon: '💧',
+    title: '浇水',
+    text: waterMain + (waterExtra.length ? '；' + waterExtra.join('；') : '，按常规节奏') +
+      `（基础间隔 ${plan.base} 天，当前系数 ${plan.factor}）`,
+  });
+
+  // 2) 光照（物种偏好 + 实时高温/低温提示）
+  if (rule && rule.light) {
+    let t = rule.light;
+    if (temp !== null && temp >= 32) t += '；当前高温，注意遮阴、避开正午暴晒';
+    else if (temp !== null && temp <= 5) t += '；低温注意保暖防冻';
+    items.push({ icon: '☀️', title: '光照', text: t });
+  }
+
+  // 3) 增湿（喜水植物 + 空气偏干时）
+  if (plant.waterLevel === 'high' && hum !== null && hum < 55) {
+    items.push({ icon: '💦', title: '增湿', text: '空气偏干，常向叶面和周围喷雾增湿，避免叶尖发黄' });
+  }
+
+  // 4) 花事（修剪 / 换盆）—— 季节特点 + 实时气温禁忌
+  const ft = flowerTasks(season, temp);
+  items.push({ icon: '🌿', title: '花事（修剪/换盆）', text: ft.base + (ft.caveat ? ' ' + ft.caveat : '') });
+
+  // 5) 防病喷药 —— 仅当天气存在病害风险
+  const daily = (weather && weather.daily) || [];
+  const dm = diseaseAdvice(plant, temp, hum, daily);
+  if (dm.length) {
+    items.push({ icon: '🛡️', title: '防病喷药', text: dm.join('；') });
+  }
+
+  // 6) 季节要点（物种静态习性，作为背景补充，而非孤立月历）
+  if (rule && rule.season && rule.season[season]) {
+    items.push({ icon: '📅', title: `${SEASON_LABEL[season]}季要点`, text: rule.season[season] });
+  }
+
+  const headline = now
+    ? `🌡️ 当前 ${now.text} ${temp}℃ · 湿度 ${hum}% · ${plant.name}`
+    : `🌡️ 未获取天气 · ${plant.name}（点首页「定位」开启实时建议）`;
+
+  return { headline, items, season, weatherText: plan.weatherText };
+}
