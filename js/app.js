@@ -2,7 +2,7 @@
 import { plants as PStore, waterings as WStore, checkins as CStore, settings as SStore } from './db.js';
 import { PLANTS, WATER_LEVEL, MONTHLY_CALENDAR, findRule } from './data.js';
 import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
-import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType } from './engine.js';
+import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType, typeIcon } from './engine.js';
 
 const state = {
   settings: { location: '', dashscopeKey: '' },
