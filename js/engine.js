@@ -166,6 +166,23 @@ const FLOWER = {
   },
 };
 
+// 施肥建议（因植物类别/季节而异；食虫/球根等有特殊要求）
+const FERT = {
+  rose: { spring:'展叶后每7-10天施一次氮磷钾均衡液肥，花前增施磷钾肥促花。', summer:'高温期停浓肥，薄肥勤施；花后补肥。', autumn:'秋花后施一次磷钾肥壮枝，之后控肥。', winter:'休眠停肥。' },
+  citrus: { spring:'春梢期施腐熟有机肥+少量氮肥，喜酸可浇矾肥水/硫酸亚铁。', summer:'果实膨大期薄肥勤施（氮磷钾），忌浓肥烧根。', autumn:'采果后补一次有机肥恢复树势。', winter:'低温停肥。' },
+  shrub: { spring:'萌芽前施基肥，生长期每2周一次薄肥。', summer:'花期内薄肥勤施。', autumn:'花后补肥，之后控肥。', winter:'入室停肥。' },
+  succulent: { spring:'生长季每月一次多肉专用薄肥（低氮）。', summer:'高温休眠停肥。', autumn:'恢复生长施一次薄肥。', winter:'断水停肥。' },
+  herb: { spring:'苗期每半月一次稀液肥。', summer:'生长旺，每月一次稀肥（不想株过大则少施）。', autumn:'秋凉正常，渐停追肥准备越冬。', winter:'枯死/越冬，停肥。' },
+  bulb: { spring:'萌芽至开花前施1-2次腐熟饼肥/复合肥。', summer:'花后养球施一次液肥。', autumn:'秋末基肥。', winter:'休眠停肥。' },
+  carnivorous: { spring:'基本不需土施肥料；可喷1/5浓度叶面肥，或靠捕虫自养，切勿往基质加肥（根系极不耐盐）。', summer:'同春，高温期更忌施肥烧根。', autumn:'同春，仍不可施固体肥。', winter:'休眠/保暖期停肥。' },
+  generic: { spring:'生长季每2-3周一次稀薄液肥。', summer:'高温期停浓肥、薄肥勤施。', autumn:'花后/生长放缓减肥。', winter:'低温停肥。' },
+};
+
+function fertilizeAdvice(type, rule, season) {
+  if (rule && rule.fertilize && rule.fertilize[season]) return rule.fertilize[season];
+  return (FERT[type] || FERT.generic)[season];
+}
+
 // 季节花事（因植物类别而异）+ 实时气温禁忌
 function flowerTasks(type, season, temp) {
   const base = (FLOWER[type] || FLOWER.generic)[season];
@@ -251,6 +268,9 @@ export function careAdvice(plant, rule, weather) {
   if (plant.waterLevel === 'high' && hum !== null && hum < 55) {
     items.push({ icon: '💦', title: '增湿', text: '空气偏干，常向叶面和周围喷雾增湿，避免叶尖发黄' });
   }
+
+  // 3.6) 施肥建议（因植物类别/季节而异；食虫植物等有特殊要求）
+  items.push({ icon: '🍃', title: '施肥', text: fertilizeAdvice(type, rule, season) });
 
   // 3.5) 习性（物种专属，用户想要的“习性/养护知识”）
   if (rule && rule.habits) {
