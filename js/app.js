@@ -151,7 +151,7 @@ async function renderHome() {
       <div class="card plant-row">
         <div class="plant-row__info">
           <div class="plant-row__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
-          <div class="plant-row__meta">该浇水啦${plan.reasons.length ? ' · ' + esc(plan.reasons[0]) : ''}</div>
+          <div class="plant-row__meta">该浇水啦${plan.reasons.length ? ' · ' + esc(plan.reasons[0]) : ''}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
         </div>
         <button class="btn btn--primary" data-action="water" data-id="${plant.id}">已浇水</button>
       </div>`).join('')
@@ -162,7 +162,7 @@ async function renderHome() {
       <div class="card plant-row">
         <div class="plant-row__info">
           <div class="plant-row__name">${esc(plant.name)}</div>
-          <div class="plant-row__meta">${plan.daysLeft} 天后 · ${fmtDate(plan.nextDate)}</div>
+          <div class="plant-row__meta">${plan.daysLeft} 天后 · ${fmtDate(plan.nextDate)}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
         </div>
         <button class="btn btn--ghost" data-action="plant" data-id="${plant.id}">查看</button>
       </div>`).join('')
@@ -196,7 +196,7 @@ async function renderPlants() {
             ${levelBadge(plant.waterLevel)}
           </div>
           <div class="plant-card__meta">
-            下次浇水 ${fmtDate(plan.nextDate)} · ${plan.due ? '<b class="warn">已到期</b>' : plan.daysLeft + ' 天后'}
+            下次浇水 ${fmtDate(plan.nextDate)} · ${plan.due ? '<b class="warn">已到期</b>' : plan.daysLeft + ' 天后'}${plant.note ? ' · 📌' + esc(plant.note) : ''}
           </div>
           <div class="plant-card__meta">上次浇水 ${fmtDate(plant.lastWatered || plant.plantedDate || '—')}</div>
         </div>`).join('')}
@@ -308,11 +308,13 @@ async function renderPlantDetail(id) {
   return `
     <div class="detail-head">
       <button class="btn btn--ghost" data-action="back">← 返回</button>
+      <button class="btn btn--ghost" data-action="edit" data-id="${plant.id}">✏️ 编辑</button>
       <button class="btn btn--ghost" data-action="delete" data-id="${plant.id}">删除</button>
     </div>
     <div id="diag-result"></div>
     <div class="card">
       <div class="plant-card__top"><span class="plant-card__name">${esc(plant.name)}</span>${levelBadge(plant.waterLevel)}</div>
+      ${plant.note ? `<div class="plant-note">📌 ${esc(plant.note)}</div>` : ''}
       <div class="kv"><span>光照</span><b>${esc(plant.light || (rule && rule.light) || '—')}</b></div>
       <div class="kv"><span>基础间隔</span><b>${plant.baseDays || (rule && WATER_LEVEL[plant.waterLevel].baseDays)} 天</b></div>
       <div class="kv"><span>下次浇水</span><b class="${plan.due ? 'warn' : ''}">${fmtDate(plan.nextDate)}（${plan.due ? '已到期' : plan.daysLeft + ' 天后'}）</b></div>
@@ -430,6 +432,7 @@ async function onViewClick(e) {
     return;
   }
   if (action === 'plant') return navigate('plant', id);
+  if (action === 'edit') return editPlant(id);
   if (action === 'delete') {
     const ok = await confirmModal({
       title: '删除植物',
@@ -808,6 +811,63 @@ function confirmModal({ title = '请确认', message = '', okText = '确定', ca
       if (r === 'ok') close(true);
       else if (r === 'cancel') close(false);
     });
+  });
+}
+
+// 编辑植物：名称/备注/喜水程度/间隔/光照均可改（便于区分同种植株）
+async function editPlant(id) {
+  const plant = await PStore.get(id);
+  if (!plant) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay dim';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>✏️ 编辑植物</h3>
+      <label class="m-label">名称（物种名，用于养护建议）
+        <input id="ep-name" value="${esc(plant.name)}" />
+      </label>
+      <label class="m-label">备注 / 位置（区分同种植株，如：客厅、大盆）
+        <input id="ep-note" value="${esc(plant.note || '')}" placeholder="选填，例如：客厅 / 卧室 / 大盆" />
+      </label>
+      <label class="m-label">喜水程度
+        <select id="ep-level">
+          <option value="high" ${plant.waterLevel === 'high' ? 'selected' : ''}>喜水（浇勤）</option>
+          <option value="mid" ${plant.waterLevel === 'mid' ? 'selected' : ''}>中等</option>
+          <option value="low" ${plant.waterLevel === 'low' ? 'selected' : ''}>耐旱（少浇）</option>
+        </select>
+      </label>
+      <label class="m-label">基础浇水间隔（天）
+        <input id="ep-days" type="number" min="1" max="30" value="${plant.baseDays || 5}" />
+      </label>
+      <label class="m-label">光照需求
+        <input id="ep-light" value="${esc(plant.light || '')}" placeholder="例如：散射光" />
+      </label>
+      <button class="btn btn--primary" data-r="save">💾 保存</button>
+      <button class="btn btn--ghost" data-r="cancel">取消</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => { if (overlay.parentNode) overlay.remove(); };
+  overlay.addEventListener('click', async (e) => {
+    const r = e.target.dataset && e.target.dataset.r;
+    if (!r) return;
+    if (r === 'cancel') { close(); return; }
+    if (r === 'save') {
+      const name = overlay.querySelector('#ep-name').value.trim();
+      if (!name) { toast('名称不能为空'); return; }
+      const days = parseInt(overlay.querySelector('#ep-days').value, 10);
+      plant.name = name;
+      plant.note = overlay.querySelector('#ep-note').value.trim();
+      plant.waterLevel = overlay.querySelector('#ep-level').value;
+      plant.baseDays = Math.max(1, Math.min(30, isNaN(days) ? 5 : days));
+      plant.light = overlay.querySelector('#ep-light').value.trim();
+      loading(true, '保存中…');
+      try {
+        await PStore.update(plant);
+        toast('已保存 ✏️');
+        close();
+        $('#view').innerHTML = await renderPlantDetail(id);
+      } finally { loading(false); }
+    }
   });
 }
 
