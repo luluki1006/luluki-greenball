@@ -2,7 +2,7 @@
 import { plants as PStore, waterings as WStore, checkins as CStore, settings as SStore } from './db.js';
 import { PLANTS, WATER_LEVEL, MONTHLY_CALENDAR, findRule } from './data.js';
 import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
-import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays } from './engine.js';
+import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice } from './engine.js';
 
 const state = {
   settings: { location: '', dashscopeKey: '' },
@@ -292,8 +292,7 @@ async function renderPlantDetail(id) {
   if (!plant) return `<div class="empty">植物不存在</div>`;
   const rule = findRule(plant.name);
   const plan = computeWatering(plant, state.weather);
-  const season = seasonOf();
-  const careText = rule ? rule.season[season] : (plant.note || '暂无养护建议');
+  const advice = careAdvice(plant, rule, state.weather);
   const tips = rule ? rule.tips : '';
 
   const checks = (await CStore.byPlant(id)).sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -321,10 +320,16 @@ async function renderPlantDetail(id) {
       <div class="reasons">${plan.reasons.map((r) => `<span class="tag">${esc(r)}</span>`).join('') || '<span class="tag">天气温和，按常规节奏</span>'}</div>
     </div>
 
-    <div class="card">
-      <h4>${SEASON_LABEL[season]}季养护</h4>
-      <p class="care">${esc(careText)}</p>
+    <div class="card care-card">
+      <h4>🌡️ 实时养护建议</h4>
+      <p class="care-head">${esc(advice.headline)}</p>
+      ${advice.items.map((it) => `
+        <div class="care-item">
+          <span class="care-ico">${it.icon}</span>
+          <div class="care-body"><b>${esc(it.title)}</b><p>${esc(it.text)}</p></div>
+        </div>`).join('')}
       ${tips ? `<p class="tip">💡 ${esc(tips)}</p>` : ''}
+      <p class="hint">依据当地实时天气逐日生成 · 仅供参考</p>
     </div>
 
     <div class="detail-actions">
@@ -415,12 +420,25 @@ async function onViewClick(e) {
   if (action === 'back') return navigate('plants');
 
   if (action === 'water') {
-    await markWatered(id);
+    const ok = await confirmModal({
+      title: '记录浇水',
+      message: '确定要把这盆标记为「今天已浇水」吗？（误触可点取消）',
+      okText: '已浇水',
+      cancelText: '取消',
+    });
+    if (ok) await markWatered(id);
     return;
   }
   if (action === 'plant') return navigate('plant', id);
   if (action === 'delete') {
-    if (confirm('确定删除该植物及其所有记录？')) {
+    const ok = await confirmModal({
+      title: '删除植物',
+      message: '确定删除该植物及其所有浇水/打卡/诊断记录？此操作不可撤销',
+      okText: '删除',
+      cancelText: '取消',
+      danger: true,
+    });
+    if (ok) {
       await PStore.remove(id);
       toast('已删除');
       navigate('plants');
@@ -708,17 +726,104 @@ async function exportData() {
   toast('已导出');
 }
 
-// 打卡弹窗（简单内联）
+// 媒体选择弹窗：自带「完成 / 取消」出口，避免 iOS 相机取消后 Promise 卡死
+// 返回 { canceled, text, photo }；text 仅在 needNote 时有意义，photo 为压缩后的 dataURL
+function openMediaModal({ title = '添加照片', hint = '', needNote = false, require = false, placeholder = '' } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay dim';
+    overlay.innerHTML = `
+      <div class="modal">
+        <h3>${esc(title)}</h3>
+        ${hint ? `<p class="hint">${esc(hint)}</p>` : ''}
+        ${needNote ? `<textarea id="mm-note" placeholder="${esc(placeholder)}"></textarea>` : ''}
+        <div id="mm-prev" class="prev"></div>
+        <button class="btn btn--primary" data-p="camera">📷 拍照</button>
+        <button class="btn" data-p="album">🖼️ 从相册选择</button>
+        ${require ? '' : `<button class="btn" data-p="skip">⏭️ 不用照片</button>`}
+        <button class="btn btn--primary" data-p="done">✅ 完成</button>
+        <button class="btn btn--ghost" data-p="cancel">❌ 取消</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;';
+    overlay.appendChild(input);
+    let photo = '';
+
+    const close = (res) => {
+      if (!overlay.parentNode) return;
+      input.onchange = null;
+      overlay.remove();
+      resolve(res);
+    };
+    const renderPrev = () => {
+      const prev = overlay.querySelector('#mm-prev');
+      prev.innerHTML = photo
+        ? `<img class="thumb" src="${photo}" alt="预览"/><button class="btn btn--ghost" data-p="remove">🗑️ 移除照片</button>`
+        : '';
+    };
+    input.onchange = async () => {
+      if (input.files && input.files[0]) {
+        try { photo = await resizeImage(await fileToDataURL(input.files[0])); } catch (e) { photo = ''; }
+        renderPrev();
+      }
+    };
+    overlay.addEventListener('click', (e) => {
+      const p = e.target.dataset && e.target.dataset.p;
+      if (!p) return;
+      if (p === 'camera') { input.setAttribute('capture', 'environment'); input.click(); }
+      else if (p === 'album') { input.removeAttribute('capture'); input.click(); }
+      else if (p === 'remove') { photo = ''; input.value = ''; renderPrev(); }
+      else if (p === 'skip') {
+        const note = needNote ? overlay.querySelector('#mm-note').value : '';
+        close({ canceled: false, text: note, photo: '' });
+      }
+      else if (p === 'done') {
+        if (require && !photo) { toast('请先选择一张照片'); return; }
+        const note = needNote ? overlay.querySelector('#mm-note').value : '';
+        close({ canceled: false, text: note, photo });
+      }
+      else if (p === 'cancel') { close({ canceled: true }); }
+    });
+  });
+}
+
+// 通用确认弹窗（in-app 按钮，iOS 上比原生 confirm 更稳，取消可靠）
+function confirmModal({ title = '请确认', message = '', okText = '确定', cancelText = '取消', danger = false } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay dim';
+    overlay.innerHTML = `
+      <div class="modal">
+        <h3>${esc(title)}</h3>
+        ${message ? `<p class="hint">${esc(message)}</p>` : ''}
+        <button class="btn ${danger ? 'btn--warn' : 'btn--primary'}" data-r="ok">${esc(okText)}</button>
+        <button class="btn btn--ghost" data-r="cancel">${esc(cancelText)}</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = (val) => { if (!overlay.parentNode) return; overlay.remove(); resolve(val); };
+    overlay.addEventListener('click', (e) => {
+      const r = e.target.dataset && e.target.dataset.r;
+      if (r === 'ok') close(true);
+      else if (r === 'cancel') close(false);
+    });
+  });
+}
+
+// 打卡弹窗（文字可选 + 照片可选，随时可取消）
 async function openCheckin(id) {
-  const text = prompt('记录一下（选填，如：长了新叶 / 施了肥 / 状态良好）：', '');
-  if (text === null) return;
+  const res = await openMediaModal({
+    title: '成长打卡',
+    hint: '记录这一刻的成长（文字可选，照片可选）',
+    needNote: true,
+    require: false,
+    placeholder: '选填，如：长了新叶 / 施了肥 / 状态良好',
+  });
+  if (res.canceled) { toast('已取消打卡'); return; }
   loading(true, '保存中…');
   try {
-    let photo = '';
-    // 可选拍照
-    const want = confirm('是否同时拍一张照片记录？（确定=拍照，取消=仅文字）');
-    if (want) photo = await pickPhoto();
-    await CStore.add({ plantId: id, type: 'growth', text: text || '', photo, date: new Date().toISOString() });
+    await CStore.add({ plantId: id, type: 'growth', text: res.text || '', photo: res.photo || '', date: new Date().toISOString() });
     toast('已打卡 📸');
     $('#view').innerHTML = await renderPlantDetail(id);
   } finally {
@@ -726,24 +831,12 @@ async function openCheckin(id) {
   }
 }
 
-// 打开相机/相册选一张图，返回压缩后的 dataURL
-function pickPhoto() {
-  return new Promise((resolve) => {
-    const inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
-    inp.onchange = async () => {
-      if (inp.files[0]) resolve(await resizeImage(await fileToDataURL(inp.files[0])));
-      else resolve('');
-    };
-    inp.click();
-  });
-}
-
 // 拍照诊断病虫害 / 健康状态
 async function openDiagnose(id) {
   if (!state.settings.dashscopeKey) { toast('请先在设置里填写通义千问 VL Key'); return; }
-  const dataURL = await pickPhoto();
-  if (!dataURL) return;
+  const res = await openMediaModal({ title: '拍照诊断', hint: '拍一张清晰的植物照片，识别病虫害与健康状况', needNote: false, require: true });
+  if (res.canceled) { toast('已取消'); return; }
+  const dataURL = res.photo;
   loading(true, '诊断中…');
   try {
     const text = await vision(dataURL, DIAG_PROMPT, state.settings.dashscopeKey);
