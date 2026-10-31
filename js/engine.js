@@ -1,5 +1,5 @@
 // 浇水算法引擎：结合植物喜水等级 + 当地实时/预报天气，动态计算下次浇水
-import { WATER_LEVEL } from './data.js';
+import { WATER_LEVEL, findRule } from './data.js';
 
 export function todayStr(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -37,7 +37,8 @@ function isRainy(day) {
  */
 export function computeWatering(plant, weather) {
   const level = WATER_LEVEL[plant.waterLevel] || WATER_LEVEL.mid;
-  const base = plant.baseDays || level.baseDays;
+  // 学习层优先：若已按实际浇水记录校准过，则用校准值作为基础间隔
+  const base = Number(plant.learnedDays) || Number(plant.baseDays) || level.baseDays;
 
   let factor = 1;
   const reasons = [];
@@ -321,4 +322,100 @@ export function careAdvice(plant, rule, weather) {
     : `🌡️ 未获取天气 · ${plant.name}（点首页「定位」开启实时建议）`;
 
   return { headline, items, season, weatherText: plan.weatherText };
+}
+
+/**
+ * 学习层（混合架构第③层）：根据该植物「实际浇水记录」校准浇水间隔。
+ * 设计原则：保守且抗干扰——
+ *   1) 剔除 <1 天（重复点击）与 >45 天（多半是忘记浇水/出差）的异常间隔；
+ *   2) 只在 0.5x~2x 建议值的合理区间内采信，避免被「长期忘记浇水」带偏；
+ *   3) 每次最多只向实际值移动 25%，防止单次异常把节奏整体带跑；
+ *   4) 始终以「原始 baseDays」为基准重新计算，不用上一次的校准值，避免漂移累积。
+ * 返回 { base, learned, samples, actualMedian, changed, note }
+ */
+export function learnInterval(plant, records) {
+  const level = WATER_LEVEL[plant.waterLevel] || WATER_LEVEL.mid;
+  const base = Number(plant.baseDays) || level.baseDays;
+
+  const days = (records || [])
+    .map((r) => String((r && r.date) || '').slice(0, 10))
+    .filter(Boolean)
+    .sort();
+
+  if (days.length < 3) {
+    return { base, learned: null, samples: days.length, note: '浇水记录不足 3 次，暂不校准' };
+  }
+
+  const gaps = [];
+  for (let i = 1; i < days.length; i++) {
+    const g = diffDays(days[i], days[i - 1]);
+    if (g >= 1 && g <= 45) gaps.push(g);
+  }
+  if (gaps.length < 2) {
+    return { base, learned: null, samples: gaps.length, note: '有效间隔样本不足，暂不校准' };
+  }
+
+  gaps.sort((a, b) => a - b);
+  const median = gaps.length % 2
+    ? gaps[(gaps.length - 1) / 2]
+    : Math.round((gaps[gaps.length / 2 - 1] + gaps[gaps.length / 2]) / 2);
+
+  if (median < base * 0.5 || median > base * 2) {
+    return {
+      base, learned: null, samples: gaps.length, actualMedian: median,
+      note: `实际间隔约 ${median} 天，与建议 ${base} 天差异过大，暂不采纳`,
+    };
+  }
+
+  const step = Math.max(-Math.round(base * 0.25), Math.min(Math.round(base * 0.25), median - base));
+  const learned = Math.max(1, Math.min(30, Math.round(base + step)));
+
+  return {
+    base, learned, samples: gaps.length, actualMedian: median,
+    changed: learned !== base,
+    note: learned === base
+      ? `按 ${gaps.length} 次实际浇水，节奏稳定在 ${base} 天`
+      : `按 ${gaps.length} 次实际浇水校准：${base} 天 → ${learned} 天`,
+  };
+}
+
+/**
+ * 本周待办清单：把「浇水日程 + 当季花事 + 施肥」按植物聚合成本周可执行清单。
+ * 返回 { from, to, groups:[{plantId, plantName, icon, water, prune, fert}] }
+ * water 为 null 表示本周（7 天内）无需浇水。
+ */
+export function weeklyTasks(plants, weather) {
+  const today = todayStr();
+  const season = seasonOf();
+  const groups = [];
+
+  for (const p of plants) {
+    const rule = findRule(p.name);
+    const type = (rule && rule.type) || inferType(p.name);
+    const plan = computeWatering(p, weather);
+
+    groups.push({
+      plantId: p.id,
+      plantName: p.name,
+      icon: typeIcon(type),
+      water: plan.daysLeft <= 7
+        ? {
+            date: plan.due ? today : plan.nextDate,
+            text: plan.due ? '今天' : `${plan.daysLeft} 天后（${plan.nextDate}）`,
+          }
+        : null,
+      prune: (rule && rule.prune) || (FLOWER[type] || FLOWER.generic)[season],
+      fert: fertilizeAdvice(type, rule, season),
+    });
+  }
+
+  // 本周需要浇水的排前面（按浇水日期），其余按名称
+  groups.sort((a, b) => {
+    if (a.water && !b.water) return -1;
+    if (!a.water && b.water) return 1;
+    if (a.water && b.water) return a.water.date.localeCompare(b.water.date);
+    return a.plantName.localeCompare(b.plantName, 'zh');
+  });
+
+  return { from: today, to: addDays(today, 7), groups };
 }
