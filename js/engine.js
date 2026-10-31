@@ -98,7 +98,7 @@ export function inferType(name = '') {
     ['rose', ['月季', '玫瑰', '蔷薇', '月月红', '藤本月季']],
     ['citrus', ['柠檬', '柑橘', '橙', '柚', '桔', '橘', '金桔', '柚子']],
     ['succulent', ['多肉', '肉肉', '仙人掌', '芦荟', '景天', '玉露', '胧月', '石莲']],
-    ['orchid', ['兰', '蝴蝶兰', '石斛', '文心兰', '春兰', '蕙兰']],
+    ['orchid', ['蝴蝶兰', '石斛', '文心兰', '春兰', '蕙兰', '卡特兰', '大花蕙兰', '墨兰', '建兰']],
     ['herb', ['薄荷', '罗勒', '百里香', '紫苏', '矮牵牛', '向日葵', '三色堇', '玛格丽特']],
     ['shrub', ['茉莉', '栀子', '绣球', '杜鹃', '茶花', '瑞香', '丁香', '三角梅']],
     ['foliage', ['绿萝', '吊兰', '龟背竹', '文竹', '富贵竹', '铜钱草', '蕨', '常春藤', '万年青', '竹芋', '合果芋']],
@@ -106,6 +106,18 @@ export function inferType(name = '') {
   ];
   for (const [t, kws] of table) if (kws.some((k) => n.includes(k))) return t;
   return 'generic';
+}
+
+// 类别/记录类型 → 图标（植物头像、时间线打卡共用）
+const TYPE_ICON = {
+  // 植物类别
+  rose: '🌹', citrus: '🍋', succulent: '🌵', orchid: '🌺',
+  herb: '🌿', shrub: '🌳', foliage: '🍃', tree: '🌲', generic: '🪴',
+  // 打卡记录类型
+  water: '💧', fertilize: '🌱', growth: '📸', diagnosis: '🔍', note: '📝', other: '⭐',
+};
+export function typeIcon(t = '') {
+  return TYPE_ICON[t] || '🪴';
 }
 
 // 不同类别的修剪/换盆/施肥时机（季节驱动），远比“一刀切”科学
