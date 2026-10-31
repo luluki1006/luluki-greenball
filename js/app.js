@@ -3,6 +3,7 @@ import { plants as PStore, waterings as WStore, checkins as CStore, settings as 
 import { PLANTS, WATER_LEVEL, MONTHLY_CALENDAR, findRule } from './data.js';
 import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
 import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType, typeIcon, learnInterval, weeklyTasks } from './engine.js';
+import { iconSVG, weatherIcon, artSVG } from './icons.js';
 
 const state = {
   settings: { location: '', dashscopeKey: '' },
@@ -147,10 +148,11 @@ async function renderHome() {
   const w = state.weather && state.weather.now;
   const weatherCard = w
     ? `<div class="card weather">
+         <span class="weather__ico">${iconSVG(weatherIcon(w.text), 0)}</span>
          <div class="weather__main">${esc(w.text)} <b>${w.temp}℃</b></div>
          <div class="weather__sub">湿度 ${w.humidity}% · 体感 ${w.feelsLike ?? '—'}℃</div>
        </div>`
-    : `<div class="card weather weather--empty">未获取天气 · <a data-action="geo">📍 点此开启定位</a></div>`;
+    : `<div class="card weather weather--empty">${iconSVG('cloud', 0)} 未获取天气 · <a data-action="geo">点此开启定位</a></div>`;
 
   const dueHtml = due.length
     ? due.map(({ plant, plan }) => `
@@ -159,12 +161,12 @@ async function renderHome() {
           <span class="plant-avatar">${typeIcon(inferType(plant.name))}</span>
           <div class="plant-row__text">
             <div class="plant-row__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
-            <div class="plant-row__meta">该浇水啦${plan.reasons.length ? ' · ' + esc(plan.reasons[0]) : ''}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+            <div class="plant-row__meta">该浇水啦${plan.reasons.length ? ' · ' + esc(plan.reasons[0]) : ''}${plant.note ? ' · 备注 ' + esc(plant.note) : ''}</div>
           </div>
         </div>
         <button class="btn btn--primary" data-action="water" data-id="${plant.id}">已浇水</button>
       </div>`).join('')
-    : `<div class="empty">🎉 今天没有植物需要浇水</div>`;
+    : `<div class="empty">${artSVG('empty-done')}今天没有植物需要浇水</div>`;
 
   const soonHtml = soon.length
     ? `<h3 class="section">接下来 7 天</h3>` + soon.map(({ plant, plan }) => `
@@ -173,7 +175,7 @@ async function renderHome() {
           <span class="plant-avatar">${typeIcon(inferType(plant.name))}</span>
           <div class="plant-row__text">
             <div class="plant-row__name">${esc(plant.name)}</div>
-            <div class="plant-row__meta">${plan.daysLeft} 天后 · ${fmtDate(plan.nextDate)}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+            <div class="plant-row__meta">${plan.daysLeft} 天后 · ${fmtDate(plan.nextDate)}${plant.note ? ' · 备注 ' + esc(plant.note) : ''}</div>
           </div>
         </div>
         <button class="btn btn--ghost" data-action="plant" data-id="${plant.id}">查看</button>
@@ -182,16 +184,16 @@ async function renderHome() {
 
   const wt = all.length ? weeklyTasks(all, state.weather) : null;
   const weekHtml = wt
-    ? `<h3 class="section">📋 本周待办（${fmtDate(wt.from)} - ${fmtDate(wt.to)}）</h3>` +
+    ? `<h3 class="section">本周待办 · ${fmtDate(wt.from)} - ${fmtDate(wt.to)}</h3>` +
       wt.groups.map((g) => `
       <div class="card week-card">
         <div class="week-card__head">
           <span class="plant-avatar">${g.icon}</span>
           <b>${esc(g.plantName)}</b>
         </div>
-        <div class="week-item">💧 浇水：${g.water ? `<b>${esc(g.water.text)}</b>` : '本周无需'}</div>
-        <div class="week-item">🌿 花事：${esc(clip(g.prune))}</div>
-        <div class="week-item">🍃 施肥：${esc(clip(g.fert))}</div>
+        <div class="week-item">${iconSVG('water', 0)}浇水：${g.water ? `<b>${esc(g.water.text)}</b>` : '本周无需'}</div>
+        <div class="week-item">${iconSVG('scissors', 0)}花事：${esc(clip(g.prune))}</div>
+        <div class="week-item">${iconSVG('fertilize', 0)}施肥：${esc(clip(g.fert))}</div>
       </div>`).join('')
     : '';
 
@@ -205,14 +207,14 @@ async function renderHome() {
     ${dueHtml}
     ${soonHtml}
     ${weekHtml}
-    ${all.length === 0 ? `<div class="empty">还没有植物，点底部“➕ 添加”开始吧</div>` : ''}
+    ${all.length === 0 ? `<div class="empty">${artSVG('empty-pot')}还没有植物，点底部“添加”开始吧</div>` : ''}
   `;
 }
 
 // ---------------- 视图：我的植物 ----------------
 async function renderPlants() {
   const all = await PStore.all();
-  if (!all.length) return `<div class="empty">还没有植物<br/>点底部“➕ 添加”通过拍照或订单截图自动录入</div>`;
+  if (!all.length) return `<div class="empty">${artSVG('empty-pot')}还没有植物<br/>点底部“添加”通过拍照或订单截图自动录入</div>`;
   const planned = planAll(all, state.weather);
   return `
     <div class="search"><input id="plant-search" placeholder="搜索植物名称…" /></div>
@@ -223,7 +225,7 @@ async function renderPlants() {
             <span class="plant-avatar">${typeIcon(inferType(plant.name))}</span>
             <div class="plant-card__body">
               <div class="plant-card__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
-              <div class="plant-card__meta">下次浇水 ${fmtDate(plan.nextDate)} · ${plan.due ? '<b class="warn">已到期</b>' : plan.daysLeft + ' 天后'}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+              <div class="plant-card__meta">下次浇水 ${fmtDate(plan.nextDate)} · ${plan.due ? '<b class="warn">已到期</b>' : plan.daysLeft + ' 天后'}${plant.note ? ' · 备注 ' + esc(plant.note) : ''}</div>
             </div>
           </div>
           <div class="plant-card__meta">上次浇水 ${fmtDate(plant.lastWatered || plant.plantedDate || '—')}</div>
@@ -236,16 +238,16 @@ function renderAdd() {
   const datalist = PLANTS.map((p) => `<option value="${esc(p.name)}">`).join('');
   return `
     <div class="add-tabs">
-      <button class="chip active" data-action="chip" data-mode="photo">📷 拍照识别</button>
-      <button class="chip" data-action="chip" data-mode="order">🧾 订单截图</button>
-      <button class="chip" data-action="chip" data-mode="manual">✍️ 手动</button>
+      <button class="chip active" data-action="chip" data-mode="photo">${iconSVG('growth', 0)}拍照识别</button>
+      <button class="chip" data-action="chip" data-mode="order">${iconSVG('note', 0)}订单截图</button>
+      <button class="chip" data-action="chip" data-mode="manual">${iconSVG('edit', 0)}手动</button>
     </div>
 
     <div class="add-panel" data-panel="photo">
       <p class="hint">拍一张植物的照片，自动识别种类并加入管理目录。</p>
       <label class="upload">
         <input type="file" accept="image/*" capture="environment" data-action="filePlant" hidden />
-        <span>📷 拍照 / 选图识别</span>
+        <span>${iconSVG('growth', 0)}拍照 / 选图识别</span>
       </label>
       <div id="photo-result"></div>
     </div>
@@ -256,7 +258,7 @@ function renderAdd() {
       <div class="route-card">
         <b>① 用千问网页免费识别（推荐）</b>
         <p class="hint">点按钮自动打开千问网页并复制指令 → 在千问里粘贴指令、上传订单截图 → 把结果复制回来粘贴到下方，自动提取植物。</p>
-        <button class="btn btn--primary" data-action="qwen-order" type="button">📋 打开千问并复制指令</button>
+        <button class="btn btn--primary" data-action="qwen-order" type="button">${iconSVG('note', 0)}打开千问并复制指令</button>
         <div id="qwen-order-box" hidden>
           <ol class="steps">
             <li>在千问网页粘贴下面的<b>指令</b>（已自动复制；没复制就点「复制指令」）</li>
@@ -280,7 +282,7 @@ function renderAdd() {
         <p class="hint">已在「⚙️ 设置」填了 Key 时可用，全自动识别、无需跳转。</p>
         <label class="upload">
           <input type="file" accept="image/*" data-action="fileOrder" hidden />
-          <span>🧾 选择订单截图</span>
+          <span>${iconSVG('note', 0)}选择订单截图</span>
         </label>
       </div>
 
@@ -333,12 +335,12 @@ async function renderPlantDetail(id) {
         ${c.text ? `<div class="tl__text">${esc(c.text)}</div>` : ''}
         ${c.photo ? `<img class="tl__photo" src="${c.photo}" alt="记录" />` : ''}
       </div>`).join('')
-    : `<div class="empty">还没有打卡记录</div>`;
+    : `<div class="empty">${artSVG('empty-timeline')}还没有打卡记录</div>`;
 
   return `
     <div class="detail-head">
       <button class="btn btn--ghost" data-action="back">← 返回</button>
-      <button class="btn btn--ghost" data-action="edit" data-id="${plant.id}">✏️ 编辑</button>
+      <button class="btn btn--ghost" data-action="edit" data-id="${plant.id}">${iconSVG('edit', 0)}编辑</button>
       <button class="btn btn--ghost" data-action="delete" data-id="${plant.id}">删除</button>
     </div>
     <div id="diag-result"></div>
@@ -346,7 +348,7 @@ async function renderPlantDetail(id) {
       <span class="plant-avatar plant-avatar--lg">${typeIcon(inferType(plant.name))}</span>
       <div class="plant-hero__body">
         <div class="plant-card__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
-        ${plant.note ? `<div class="plant-note">📌 ${esc(plant.note)}</div>` : ''}
+        ${plant.note ? `<div class="plant-note">${iconSVG('note', 0)}${esc(plant.note)}</div>` : ''}
       </div>
     </div>
     <div class="card">
@@ -359,21 +361,21 @@ async function renderPlantDetail(id) {
     </div>
 
     <div class="card care-card">
-      <h4>🌡️ 实时养护建议</h4>
+      <h4>${iconSVG('thermo', 0)} 实时养护建议</h4>
       <p class="care-head">${esc(advice.headline)}</p>
       ${advice.items.map((it) => `
         <div class="care-item">
-          <span class="care-ico">${it.icon}</span>
+          <span class="care-ico">${iconSVG(it.icon, 0)}</span>
           <div class="care-body"><b>${esc(it.title)}</b><p>${esc(it.text)}</p></div>
         </div>`).join('')}
-      ${tips ? `<p class="tip">💡 ${esc(tips)}</p>` : ''}
+      ${tips ? `<p class="tip">${esc(tips)}</p>` : ''}
       <p class="hint">依据当地实时天气逐日生成 · 仅供参考</p>
     </div>
 
     <div class="detail-actions">
-      <button class="btn btn--primary" data-action="water" data-id="${plant.id}">💧 浇水</button>
-      <button class="btn btn--accent" data-action="addCheckin" data-id="${plant.id}">📸 打卡</button>
-      <button class="btn btn--warn" data-action="diagnose" data-id="${plant.id}">🔍 诊断</button>
+      <button class="btn btn--primary" data-action="water" data-id="${plant.id}">${iconSVG('water', 0)}浇水</button>
+      <button class="btn btn--accent" data-action="addCheckin" data-id="${plant.id}">${iconSVG('growth', 0)}打卡</button>
+      <button class="btn btn--warn" data-action="diagnose" data-id="${plant.id}">${iconSVG('diagnosis', 0)}诊断</button>
     </div>
 
     <h3 class="section">成长时间线</h3>
@@ -442,7 +444,7 @@ async function renderSettings() {
       <h4>关于</h4>
       <p>花草养护助手 v0.1 · 数据全部本地存储。</p>
       <p>天气：Open-Meteo（免 Key）· 识别：通义千问 VL</p>
-      <button class="btn btn--ghost" data-action="open-guide">📖 查看图文指引</button>
+      <button class="btn btn--ghost" data-action="open-guide">${iconSVG('note', 0)}查看图文指引</button>
     </div>
   `;
 }
@@ -568,7 +570,7 @@ async function markWatered(id) {
     plant.learnedDays = learn.learned;
   }
   await PStore.update(plant);
-  toast(learn.learned ? `已记录浇水 💧 · ${learn.note}` : '已记录浇水 💧');
+  toast(learn.learned ? `已记录浇水 · ${learn.note}` : '已记录浇水');
   if (state.route === 'home') $('#view').innerHTML = await renderHome();
   else if (state.route === 'plant') $('#view').innerHTML = await renderPlantDetail(id);
   else if (state.route === 'plants') $('#view').innerHTML = await renderPlants();
@@ -598,7 +600,7 @@ async function handlePlantPhoto(dataURL) {
       lastWatered: todayStr(),
     };
     await PStore.add(plant);
-    $('#photo-result').innerHTML = `<div class="card ok">✅ 已识别并加入：<b>${esc(j.name)}</b> ${levelBadge(level)}<br/><span class="hint">置信度 ${(j.confidence || 0)}</span></div>`;
+    $('#photo-result').innerHTML = `<div class="card ok">已识别并加入：<b>${esc(j.name)}</b> ${levelBadge(level)}<br/><span class="hint">置信度 ${(j.confidence || 0)}</span></div>`;
     toast('已添加 ' + j.name);
   } catch (err) {
     $('#photo-result').innerHTML = `<div class="card err">识别失败：${esc(err.message)}</div>`;
@@ -782,11 +784,11 @@ function openMediaModal({ title = '添加照片', hint = '', needNote = false, r
         ${hint ? `<p class="hint">${esc(hint)}</p>` : ''}
         ${needNote ? `<textarea id="mm-note" placeholder="${esc(placeholder)}"></textarea>` : ''}
         <div id="mm-prev" class="prev"></div>
-        <button class="btn btn--primary" data-p="camera">📷 拍照</button>
+        <button class="btn btn--primary" data-p="camera">${iconSVG('growth', 0)}拍照</button>
         <button class="btn" data-p="album">🖼️ 从相册选择</button>
         ${require ? '' : `<button class="btn" data-p="skip">⏭️ 不用照片</button>`}
-        <button class="btn btn--primary" data-p="done">✅ 完成</button>
-        <button class="btn btn--ghost" data-p="cancel">❌ 取消</button>
+        <button class="btn btn--primary" data-p="done">完成</button>
+        <button class="btn btn--ghost" data-p="cancel">取消</button>
       </div>`;
     document.body.appendChild(overlay);
     const input = document.createElement('input');
@@ -863,7 +865,7 @@ async function editPlant(id) {
   overlay.className = 'overlay dim';
   overlay.innerHTML = `
     <div class="modal">
-      <h3>✏️ 编辑植物</h3>
+      <h3>编辑植物</h3>
       <label class="m-label">名称（物种名，用于养护建议）
         <input id="ep-name" value="${esc(plant.name)}" />
       </label>
@@ -904,7 +906,7 @@ async function editPlant(id) {
       loading(true, '保存中…');
       try {
         await PStore.update(plant);
-        toast('已保存 ✏️');
+        toast('已保存');
         close();
         $('#view').innerHTML = await renderPlantDetail(id);
       } finally { loading(false); }
@@ -947,13 +949,13 @@ async function openDiagnose(id) {
     const cause = (j && j.cause) || '';
     const solution = (j && j.solution) || '';
     const severity = (j && j.severity) || '';
-    const summary = (healthy ? '✅ 看起来健康' : '⚠️ 发现问题：' + problem + (severity ? '（' + severity + '）' : ''))
+    const summary = (healthy ? '看起来健康' : '发现问题：' + problem + (severity ? '（' + severity + '）' : ''))
       + (cause ? '\n原因：' + cause : '') + (solution ? '\n建议：' + solution : '');
     await CStore.add({ plantId: id, type: 'diagnosis', text: summary, photo: dataURL, date: new Date().toISOString() });
     const box = document.getElementById('diag-result');
     if (box) {
       box.innerHTML = `<div class="card ${healthy ? 'ok' : 'diag'}">
-        <h4>${healthy ? '✅ 状态健康' : '⚠️ ' + esc(problem) + (severity ? ' · ' + esc(severity) : '')}</h4>
+        <h4>${healthy ? '状态健康' : esc(problem) + (severity ? ' · ' + esc(severity) : '')}</h4>
         ${cause ? `<p class="care"><b>可能原因：</b>${esc(cause)}</p>` : ''}
         ${solution ? `<p class="tip">💡 <b>处理建议：</b>${esc(solution)}</p>` : ''}
         <p class="hint">已记入成长时间线</p>
@@ -1006,7 +1008,7 @@ document.addEventListener('click', async (e) => {
     n++;
   }
   toast(`已导入 ${n} 盆植物`);
-  $('#order-result').innerHTML = `<div class="card ok">✅ 已导入 ${n} 盆植物，去“我的植物”看看吧</div>`;
+  $('#order-result').innerHTML = `<div class="card ok">已导入 ${n} 盆植物，去“我的植物”看看吧</div>`;
 });
 
 // ---------------- 启动 ----------------
