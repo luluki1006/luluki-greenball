@@ -203,7 +203,13 @@ export function findRule(name) {
   if (!name) return null;
   const n = String(name).trim().toLowerCase();
   return PLANTS.find((p) => {
-    if (p.name.toLowerCase() === n) return true;
-    return (p.alias || []).some((a) => a.toLowerCase() === n || n.includes(a.toLowerCase()) || a.toLowerCase().includes(n));
+    const pn = p.name.toLowerCase();
+    if (pn === n) return true;
+    // 植物名包含规则名（如“客厅绿萝”→绿萝，“阳台月季”→月季），且不误伤过短规则名
+    if (pn.length >= 2 && n.includes(pn)) return true;
+    return (p.alias || []).some((a) => {
+      const al = a.toLowerCase();
+      return al === n || n.includes(al) || al.includes(n);
+    });
   }) || null;
 }
