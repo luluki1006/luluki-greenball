@@ -229,3 +229,9 @@ details.month-item summary { cursor: pointer; font-weight: 600; list-style: none
 details.month-item summary::-webkit-details-marker { display: none; }
 details.month-item summary::before { content: "▸ "; color: var(--green); }
 details[open].month-item summary::before { content: "▾ "; }
+
+/* 本周待办清单 */
+.week-card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.week-card__head b { font-size: 15px; color: var(--text); }
+.week-item { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 3px 0; }
+.week-item b { color: var(--green-dark); }
