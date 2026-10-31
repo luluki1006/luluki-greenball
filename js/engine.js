@@ -252,13 +252,27 @@ export function careAdvice(plant, rule, weather) {
     items.push({ icon: '💦', title: '增湿', text: '空气偏干，常向叶面和周围喷雾增湿，避免叶尖发黄' });
   }
 
-  // 4) 花事（修剪 / 换盆）—— 因植物类别而异 + 实时气温禁忌
-  const ft = flowerTasks(type, season, temp);
-  items.push({ icon: '🌿', title: '花事（修剪/换盆）', text: ft.base + (ft.caveat ? ' ' + ft.caveat : '') });
+  // 3.5) 习性（物种专属，用户想要的“习性/养护知识”）
+  if (rule && rule.habits) {
+    items.push({ icon: '🌱', title: '习性', text: rule.habits });
+  }
 
-  // 5) 防病喷药 —— 仅当天气存在病害风险（且按类别补充专属病害）
+  // 4) 花事（修剪 / 换盆）—— 优先用规则库专属数据，否则类别模板；实时气温禁忌始终叠加
+  let flowerText;
+  if (rule && rule.prune) {
+    flowerText = rule.prune;
+  } else {
+    flowerText = flowerTasks(type, season, temp).base;
+  }
+  if (temp !== null && temp >= 32) flowerText += ' 当前高温（≥32℃），换盆/重剪请延后。';
+  else if (temp !== null && temp <= 5) flowerText += ' 当前低温（≤5℃），不宜换盆与重剪。';
+  items.push({ icon: '🌿', title: '花事（修剪/换盆）', text: flowerText });
+
+  // 5) 防病喷药 —— 优先规则库专属季节病害，再叠加天气/类别风险
   const daily = (weather && weather.daily) || [];
-  const dm = diseaseAdvice(type, plant, temp, hum, daily);
+  const dm = [];
+  if (rule && rule.pests && rule.pests[season]) dm.push(rule.pests[season]);
+  dm.push(...diseaseAdvice(type, plant, temp, hum, daily));
   if (dm.length) {
     items.push({ icon: '🛡️', title: '防病喷药', text: dm.join('；') });
   }
