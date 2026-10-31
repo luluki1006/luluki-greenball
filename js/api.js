@@ -5,7 +5,21 @@
 const OM_GEO = 'https://geocoding-api.open-meteo.com/v1/search';
 const OM_FC = 'https://api.open-meteo.com/v1/forecast';
 const DS_EP = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
-const VL_MODEL = 'qwen-vl-plus'; // 如需更高精度可改为 'qwen-vl-max'
+const VL_MODEL = 'qwen3-vl-plus'; // Qwen3-VL 视觉模型（原 qwen-vl-plus 已停用）；更高精度可改 'qwen-vl-max'（需在百炼模型广场开通）
+
+// 带超时的 fetch：避免网络卡住导致「诊断中 / 获取天气中」永久不关闭
+async function fetchWithTimeout(url, opts = {}, ms = 30000) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('请求超时，请检查网络后重试');
+    throw new Error('网络错误：' + e.message);
+  } finally {
+    clearTimeout(tid);
+  }
+}
 
 // location 支持 "经度,纬度" 或直接城市名（如 "北京"）
 async function resolveLatLon(location) {
@@ -14,7 +28,7 @@ async function resolveLatLon(location) {
     const [lon, lat] = s.split(',').map(Number);
     return { lat, lon };
   }
-  const r = await fetch(`${OM_GEO}?name=${encodeURIComponent(s)}&count=1&language=zh`);
+  const r = await fetchWithTimeout(`${OM_GEO}?name=${encodeURIComponent(s)}&count=1&language=zh`, {}, 15000);
   const d = await r.json();
   if (!d.results || !d.results.length) {
     throw new Error('城市 "' + s + '" 未找到，试试"经度,纬度"或换个写法');
@@ -42,7 +56,7 @@ export async function getWeather(location) {
     '&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code' +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_mean' +
     '&timezone=auto&forecast_days=7';
-  const r = await fetch(url);
+  const r = await fetchWithTimeout(url, {}, 15000);
   const d = await r.json();
   if (d.error) throw new Error(d.reason || '天气获取失败');
   const now = d.current || {};
@@ -73,7 +87,7 @@ export async function getWeather(location) {
 
 export async function vision(image, prompt, key) {
   if (!key) throw new Error('请先在“设置”里填写通义千问 VL Key');
-  const r = await fetch(DS_EP, {
+  const r = await fetchWithTimeout(DS_EP, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -93,7 +107,7 @@ export async function vision(image, prompt, key) {
         ],
       },
     }),
-  });
+  }, 30000);
   const d = await r.json();
   if (d.code && d.code !== '200') throw new Error(d.message || ('视觉识别失败(' + d.code + ')'));
   const content = d.output && d.output.choices && d.output.choices[0] && d.output.choices[0].message && d.output.choices[0].message.content;
