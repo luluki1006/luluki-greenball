@@ -2,7 +2,7 @@
 import { plants as PStore, waterings as WStore, checkins as CStore, settings as SStore } from './db.js';
 import { PLANTS, WATER_LEVEL, MONTHLY_CALENDAR, findRule } from './data.js';
 import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
-import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType, typeIcon } from './engine.js';
+import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType, typeIcon, learnInterval, weeklyTasks } from './engine.js';
 
 const state = {
   settings: { location: '', dashscopeKey: '' },
@@ -22,6 +22,11 @@ function esc(s) {
 function fmtDate(iso) {
   if (!iso) return '—';
   return iso.slice(0, 10);
+}
+// 列表里截断长文本（先截断再转义，避免切断 HTML 实体）
+function clip(s, n = 60) {
+  const t = String(s == null ? '' : s);
+  return t.length > n ? t.slice(0, n) + '…' : t;
 }
 function levelBadge(level) {
   const lv = WATER_LEVEL[level] || WATER_LEVEL.mid;
@@ -175,6 +180,21 @@ async function renderHome() {
       </div>`).join('')
     : '';
 
+  const wt = all.length ? weeklyTasks(all, state.weather) : null;
+  const weekHtml = wt
+    ? `<h3 class="section">📋 本周待办（${fmtDate(wt.from)} - ${fmtDate(wt.to)}）</h3>` +
+      wt.groups.map((g) => `
+      <div class="card week-card">
+        <div class="week-card__head">
+          <span class="plant-avatar">${g.icon}</span>
+          <b>${esc(g.plantName)}</b>
+        </div>
+        <div class="week-item">💧 浇水：${g.water ? `<b>${esc(g.water.text)}</b>` : '本周无需'}</div>
+        <div class="week-item">🌿 花事：${esc(clip(g.prune))}</div>
+        <div class="week-item">🍃 施肥：${esc(clip(g.fert))}</div>
+      </div>`).join('')
+    : '';
+
   return `
     ${weatherCard}
     <div class="stats">
@@ -184,6 +204,7 @@ async function renderHome() {
     <h3 class="section">今日需浇水</h3>
     ${dueHtml}
     ${soonHtml}
+    ${weekHtml}
     ${all.length === 0 ? `<div class="empty">还没有植物，点底部“➕ 添加”开始吧</div>` : ''}
   `;
 }
@@ -302,6 +323,8 @@ async function renderPlantDetail(id) {
   const advice = careAdvice(plant, rule, state.weather);
   const tips = rule ? rule.tips : '';
 
+  const wRecs = await WStore.byPlant(id);
+  const learn = learnInterval(plant, wRecs);
   const checks = (await CStore.byPlant(id)).sort((a, b) => (a.date < b.date ? 1 : -1));
   const timeline = checks.length
     ? checks.map((c) => `
@@ -328,9 +351,10 @@ async function renderPlantDetail(id) {
     </div>
     <div class="card">
       <div class="kv"><span>光照</span><b>${esc(plant.light || (rule && rule.light) || '—')}</b></div>
-      <div class="kv"><span>基础间隔</span><b>${plant.baseDays || (rule && WATER_LEVEL[plant.waterLevel].baseDays)} 天</b></div>
+      <div class="kv"><span>浇水间隔</span><b>${plant.learnedDays ? `${plant.learnedDays} 天（已按习惯校准）` : `${plant.baseDays || (rule && WATER_LEVEL[plant.waterLevel].baseDays)} 天`}</b></div>
       <div class="kv"><span>下次浇水</span><b class="${plan.due ? 'warn' : ''}">${fmtDate(plan.nextDate)}（${plan.due ? '已到期' : plan.daysLeft + ' 天后'}）</b></div>
       <div class="kv"><span>上次浇水</span><b>${fmtDate(plant.lastWatered || plant.plantedDate || '—')}</b></div>
+      <div class="kv"><span>习惯校准</span><b>${esc(learn.note)}</b></div>
       <div class="reasons">${plan.reasons.map((r) => `<span class="tag">${esc(r)}</span>`).join('') || '<span class="tag">天气温和，按常规节奏</span>'}</div>
     </div>
 
@@ -528,7 +552,6 @@ async function onViewChange(e) {
   const dataURL = await resizeImage(await fileToDataURL(file));
   if (inp.dataset.action === 'filePlant') return handlePlantPhoto(dataURL);
   if (inp.dataset.action === 'fileOrder') return handleOrderPhoto(dataURL);
-  if (inp.dataset.action === 'fileCheckin') return handleCheckinPhoto(dataURL);
 }
 
 // ---------------- 业务逻辑 ----------------
@@ -538,8 +561,14 @@ async function markWatered(id) {
   const today = todayStr();
   await WStore.add({ plantId: id, date: today, note: 'App 标记' });
   plant.lastWatered = today;
+  // 学习层：用本次浇水后的历史记录重新校准间隔（保守、抗干扰）
+  const recs = await WStore.byPlant(id);
+  const learn = learnInterval(plant, recs);
+  if (learn.learned && learn.learned !== Number(plant.learnedDays || 0)) {
+    plant.learnedDays = learn.learned;
+  }
   await PStore.update(plant);
-  toast('已记录浇水 💧');
+  toast(learn.learned ? `已记录浇水 💧 · ${learn.note}` : '已记录浇水 💧');
   if (state.route === 'home') $('#view').innerHTML = await renderHome();
   else if (state.route === 'plant') $('#view').innerHTML = await renderPlantDetail(id);
   else if (state.route === 'plants') $('#view').innerHTML = await renderPlants();
