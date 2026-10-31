@@ -2,7 +2,7 @@
 import { plants as PStore, waterings as WStore, checkins as CStore, settings as SStore } from './db.js';
 import { PLANTS, WATER_LEVEL, MONTHLY_CALENDAR, findRule } from './data.js';
 import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
-import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice } from './engine.js';
+import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType } from './engine.js';
 
 const state = {
   settings: { location: '', dashscopeKey: '' },
@@ -26,6 +26,15 @@ function fmtDate(iso) {
 function levelBadge(level) {
   const lv = WATER_LEVEL[level] || WATER_LEVEL.mid;
   return `<span class="badge" style="background:${lv.color}">${lv.label}</span>`;
+}
+// 按植物类别返回圆形头像图标（不依赖用户上传照片）
+function typeIcon(type) {
+  const m = {
+    rose: '🌹', citrus: '🍋', succulent: '🌵', foliage: '🌿',
+    herb: '🌱', bulb: '🌷', orchid: '🌸', shrub: '🌳',
+    tree: '🌳', carnivorous: '🪤',
+  };
+  return m[type] || '🪴';
 }
 let toastTimer = null;
 function toast(msg, ms = 2200) {
@@ -149,9 +158,12 @@ async function renderHome() {
   const dueHtml = due.length
     ? due.map(({ plant, plan }) => `
       <div class="card plant-row">
-        <div class="plant-row__info">
-          <div class="plant-row__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
-          <div class="plant-row__meta">该浇水啦${plan.reasons.length ? ' · ' + esc(plan.reasons[0]) : ''}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+        <div class="plant-row__top">
+          <span class="plant-avatar">${typeIcon(inferType(plant.name))}</span>
+          <div class="plant-row__text">
+            <div class="plant-row__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
+            <div class="plant-row__meta">该浇水啦${plan.reasons.length ? ' · ' + esc(plan.reasons[0]) : ''}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+          </div>
         </div>
         <button class="btn btn--primary" data-action="water" data-id="${plant.id}">已浇水</button>
       </div>`).join('')
@@ -160,9 +172,12 @@ async function renderHome() {
   const soonHtml = soon.length
     ? `<h3 class="section">接下来 7 天</h3>` + soon.map(({ plant, plan }) => `
       <div class="card plant-row">
-        <div class="plant-row__info">
-          <div class="plant-row__name">${esc(plant.name)}</div>
-          <div class="plant-row__meta">${plan.daysLeft} 天后 · ${fmtDate(plan.nextDate)}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+        <div class="plant-row__top">
+          <span class="plant-avatar">${typeIcon(inferType(plant.name))}</span>
+          <div class="plant-row__text">
+            <div class="plant-row__name">${esc(plant.name)}</div>
+            <div class="plant-row__meta">${plan.daysLeft} 天后 · ${fmtDate(plan.nextDate)}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+          </div>
         </div>
         <button class="btn btn--ghost" data-action="plant" data-id="${plant.id}">查看</button>
       </div>`).join('')
@@ -192,11 +207,11 @@ async function renderPlants() {
       ${planned.map(({ plant, plan }) => `
         <div class="card plant-card" data-action="plant" data-id="${plant.id}">
           <div class="plant-card__top">
-            <span class="plant-card__name">${esc(plant.name)}</span>
-            ${levelBadge(plant.waterLevel)}
-          </div>
-          <div class="plant-card__meta">
-            下次浇水 ${fmtDate(plan.nextDate)} · ${plan.due ? '<b class="warn">已到期</b>' : plan.daysLeft + ' 天后'}${plant.note ? ' · 📌' + esc(plant.note) : ''}
+            <span class="plant-avatar">${typeIcon(inferType(plant.name))}</span>
+            <div class="plant-card__body">
+              <div class="plant-card__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
+              <div class="plant-card__meta">下次浇水 ${fmtDate(plan.nextDate)} · ${plan.due ? '<b class="warn">已到期</b>' : plan.daysLeft + ' 天后'}${plant.note ? ' · 📌' + esc(plant.note) : ''}</div>
+            </div>
           </div>
           <div class="plant-card__meta">上次浇水 ${fmtDate(plant.lastWatered || plant.plantedDate || '—')}</div>
         </div>`).join('')}
@@ -312,9 +327,14 @@ async function renderPlantDetail(id) {
       <button class="btn btn--ghost" data-action="delete" data-id="${plant.id}">删除</button>
     </div>
     <div id="diag-result"></div>
+    <div class="card plant-hero">
+      <span class="plant-avatar plant-avatar--lg">${typeIcon(inferType(plant.name))}</span>
+      <div class="plant-hero__body">
+        <div class="plant-card__name">${esc(plant.name)} ${levelBadge(plant.waterLevel)}</div>
+        ${plant.note ? `<div class="plant-note">📌 ${esc(plant.note)}</div>` : ''}
+      </div>
+    </div>
     <div class="card">
-      <div class="plant-card__top"><span class="plant-card__name">${esc(plant.name)}</span>${levelBadge(plant.waterLevel)}</div>
-      ${plant.note ? `<div class="plant-note">📌 ${esc(plant.note)}</div>` : ''}
       <div class="kv"><span>光照</span><b>${esc(plant.light || (rule && rule.light) || '—')}</b></div>
       <div class="kv"><span>基础间隔</span><b>${plant.baseDays || (rule && WATER_LEVEL[plant.waterLevel].baseDays)} 天</b></div>
       <div class="kv"><span>下次浇水</span><b class="${plan.due ? 'warn' : ''}">${fmtDate(plan.nextDate)}（${plan.due ? '已到期' : plan.daysLeft + ' 天后'}）</b></div>
