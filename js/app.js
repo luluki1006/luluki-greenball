@@ -198,6 +198,10 @@ async function renderHome() {
     : '';
 
   return `
+    <div class="hero" aria-hidden="true">
+      <img class="hero__img" src="img/flower-hero.png" alt="" />
+      <span class="hero__veil"></span>
+    </div>
     ${weatherCard}
     <div class="stats">
       <div class="stat"><b>${all.length}</b><span>我的植物</span></div>
