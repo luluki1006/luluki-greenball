@@ -1,5 +1,6 @@
 // 浇水算法引擎：结合植物喜水等级 + 当地实时/预报天气，动态计算下次浇水
 import { WATER_LEVEL, findRule } from './data.js';
+import { iconSVG } from './icons.js';
 
 export function todayStr(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -112,15 +113,18 @@ export function inferType(name = '') {
 }
 
 // 类别/记录类型 → 图标（植物头像、时间线打卡共用）
+// 类型 → 图标名（细线描 SVG，见 icons.js）
 const TYPE_ICON = {
   // 植物类别
-  rose: '🌹', citrus: '🍋', succulent: '🌵', orchid: '🌺',
-  herb: '🌿', shrub: '🌳', foliage: '🍃', tree: '🌲', bulb: '🌷', carnivorous: '🪤', generic: '🪴',
+  rose: 'rose', citrus: 'citrus', succulent: 'succulent', orchid: 'orchid',
+  herb: 'herb', shrub: 'shrub', foliage: 'foliage', tree: 'tree', bulb: 'bulb',
+  carnivorous: 'carnivorous', generic: 'generic',
   // 打卡记录类型
-  water: '💧', fertilize: '🌱', growth: '📸', diagnosis: '🔍', note: '📝', other: '⭐',
+  water: 'water', fertilize: 'fertilize', growth: 'growth', diagnosis: 'diagnosis',
+  note: 'note', other: 'other',
 };
 export function typeIcon(t = '') {
-  return TYPE_ICON[t] || '🪴';
+  return iconSVG(TYPE_ICON[t] || 'generic', 0);
 }
 
 // 不同类别的修剪/换盆/施肥时机（季节驱动），远比“一刀切”科学
@@ -265,7 +269,7 @@ export function careAdvice(plant, rule, weather) {
     : `约 ${plan.daysLeft} 天后再浇（${plan.nextDate}）`;
   const waterExtra = plan.reasons.slice();
   items.push({
-    icon: '💧',
+    icon: 'water',
     title: '浇水',
     text: waterMain + (waterExtra.length ? '；' + waterExtra.join('；') : '，按常规节奏') +
       `（基础间隔 ${plan.base} 天，当前系数 ${plan.factor}）`,
@@ -276,20 +280,20 @@ export function careAdvice(plant, rule, weather) {
     let t = rule.light;
     if (temp !== null && temp >= 32) t += '；当前高温，注意遮阴、避开正午暴晒';
     else if (temp !== null && temp <= 5) t += '；低温注意保暖防冻';
-    items.push({ icon: '☀️', title: '光照', text: t });
+    items.push({ icon: 'sun', title: '光照', text: t });
   }
 
   // 3) 增湿（喜水植物 + 空气偏干时）
   if (plant.waterLevel === 'high' && hum !== null && hum < 55) {
-    items.push({ icon: '💦', title: '增湿', text: '空气偏干，常向叶面和周围喷雾增湿，避免叶尖发黄' });
+    items.push({ icon: 'spray', title: '增湿', text: '空气偏干，常向叶面和周围喷雾增湿，避免叶尖发黄' });
   }
 
   // 3.6) 施肥建议（因植物类别/季节而异；食虫植物等有特殊要求）
-  items.push({ icon: '🍃', title: '施肥', text: fertilizeAdvice(type, rule, season) });
+  items.push({ icon: 'fertilize', title: '施肥', text: fertilizeAdvice(type, rule, season) });
 
   // 3.5) 习性（物种专属，用户想要的“习性/养护知识”）
   if (rule && rule.habits) {
-    items.push({ icon: '🌱', title: '习性', text: rule.habits });
+    items.push({ icon: 'sprout', title: '习性', text: rule.habits });
   }
 
   // 4) 花事（修剪 / 换盆）—— 优先用规则库专属数据，否则类别模板；实时气温禁忌始终叠加
@@ -301,7 +305,7 @@ export function careAdvice(plant, rule, weather) {
   }
   if (temp !== null && temp >= 32) flowerText += ' 当前高温（≥32℃），换盆/重剪请延后。';
   else if (temp !== null && temp <= 5) flowerText += ' 当前低温（≤5℃），不宜换盆与重剪。';
-  items.push({ icon: '🌿', title: '花事（修剪/换盆）', text: flowerText });
+  items.push({ icon: 'scissors', title: '花事（修剪/换盆）', text: flowerText });
 
   // 5) 防病喷药 —— 优先规则库专属季节病害，再叠加天气/类别风险
   const daily = (weather && weather.daily) || [];
@@ -309,17 +313,17 @@ export function careAdvice(plant, rule, weather) {
   if (rule && rule.pests && rule.pests[season]) dm.push(rule.pests[season]);
   dm.push(...diseaseAdvice(type, plant, temp, hum, daily));
   if (dm.length) {
-    items.push({ icon: '🛡️', title: '防病喷药', text: dm.join('；') });
+    items.push({ icon: 'shield', title: '防病喷药', text: dm.join('；') });
   }
 
   // 6) 季节要点（物种静态习性，作为背景补充，而非孤立月历）
   if (rule && rule.season && rule.season[season]) {
-    items.push({ icon: '📅', title: `${SEASON_LABEL[season]}季要点`, text: rule.season[season] });
+    items.push({ icon: 'calendar', title: `${SEASON_LABEL[season]}季要点`, text: rule.season[season] });
   }
 
   const headline = now
-    ? `🌡️ 当前 ${now.text} ${temp}℃ · 湿度 ${hum}% · ${plant.name}`
-    : `🌡️ 未获取天气 · ${plant.name}（点首页「定位」开启实时建议）`;
+    ? `当前 ${now.text} ${temp}℃ · 湿度 ${hum}% · ${plant.name}`
+    : `未获取天气 · ${plant.name}（点首页「定位」开启实时建议）`;
 
   return { headline, items, season, weatherText: plan.weatherText };
 }
