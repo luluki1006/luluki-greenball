@@ -75,45 +75,151 @@ export function weatherIcon(text = '') {
 }
 
 // ---------------------------------------------------------------
-// 手绘插画（内联 SVG，淡紫底 + 蓝紫线描，与图标同一套语言）
+// 手绘插画（内联 SVG，水彩柔彩风格：无描边、低饱和粉彩、米色留白）
 // ---------------------------------------------------------------
 const ART = {
-  // 空状态：还没有植物 —— 一盆小苗
+  // 空状态：还没有植物 —— 一盆小苗（水彩柔彩，无描边）
   'empty-pot': `<svg class="art" viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <circle cx="60" cy="45" r="34" fill="#EDEFFF"/>
-    <circle cx="95" cy="19" r="3" fill="#C9C4F8"/>
-    <circle cx="24" cy="31" r="2.2" fill="#C9C4F8"/>
-    <circle cx="99" cy="64" r="2.6" fill="#DED9FF"/>
-    <circle cx="21" cy="63" r="1.8" fill="#DED9FF"/>
-    <path d="M60 71V44" stroke="#5A5FD4" stroke-width="2" stroke-linecap="round"/>
-    <path d="M60 58c-9 0-15.5-6.6-15.5-15.5 9 0 15.5 6.6 15.5 15.5z" fill="#FFFFFF" stroke="#5A5FD4" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M60 51c9 0 15.5-6.6 15.5-15.5-9 0-15.5 6.6-15.5 15.5z" fill="#DCD8FB" stroke="#5A5FD4" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M44.5 70h31l-3.3 18h-24.4z" fill="#FFFFFF" stroke="#5A5FD4" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M41.5 70h37" stroke="#5A5FD4" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="60" cy="46" r="34" fill="#F1EEE8"/>
+    <path d="M60 70 C 59 58 61 48 60 38" stroke="#9DAE96" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.9"/>
+    <path d="M58 56 C 48 52 41 56 37 64 C 47 66 54 63 58 56 Z" fill="#9DAE96"/>
+    <path d="M58 56 C 48 52 41 56 37 64 C 47 66 54 63 58 56 Z" fill="#FFFFFF" opacity="0.22"/>
+    <path d="M62 50 C 72 45 80 49 84 57 C 73 59 65 56 62 50 Z" fill="#8E9B86"/>
+    <path d="M62 50 C 72 45 80 49 84 57 C 73 59 65 56 62 50 Z" fill="#FFFFFF" opacity="0.20"/>
+    <g transform="translate(60,36)">
+      <path d="M0 12 C -11 4 -10 -14 0 -20 C 10 -14 11 4 0 12 Z" fill="#9A95B8"/>
+      <path d="M0 12 C -11 4 -10 -14 0 -20 C 10 -14 11 4 0 12 Z" fill="#FFFFFF" opacity="0.18"/>
+      <ellipse cx="0" cy="0" rx="3.4" ry="5" fill="#D6C7A4"/>
+    </g>
+    <path d="M48 72 h24 l-3 16 a2.4 2.4 0 0 1 -2.4 2.4 h-13.2 a2.4 2.4 0 0 1 -2.4 -2.4 z" fill="#9A95B5"/>
+    <path d="M48 72 h24 l-0.9 5 H48.9 Z" fill="#B0ABC8"/>
+    <rect x="45" y="68" width="30" height="5" rx="2.5" fill="#8E89AE"/>
+    <ellipse cx="60" cy="71" rx="13" ry="2.8" fill="#B3A689"/>
   </svg>`,
-  // 空状态：今天没有植物需要浇水 —— 一片叶 + 对勾
+  // 空状态：今天没有植物需要浇水 —— 枝叶 + 对勾
   'empty-done': `<svg class="art" viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <circle cx="60" cy="45" r="34" fill="#EDEFFF"/>
-    <circle cx="93" cy="22" r="2.6" fill="#C9C4F8"/>
-    <circle cx="26" cy="28" r="2" fill="#C9C4F8"/>
-    <circle cx="97" cy="66" r="2.2" fill="#DED9FF"/>
-    <path d="M40 47c0-12 8-19 21-19 0 13-8 19-21 19z" fill="#DCD8FB" stroke="#5A5FD4" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M40 47c3-5 7-9 12-12" stroke="#5A5FD4" stroke-width="1.6" stroke-linecap="round"/>
-    <path d="M34 62l10 10 20-24" stroke="#5A5FD4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="60" cy="46" r="34" fill="#F1EEE8"/>
+    <path d="M44 60 C 40 46 44 34 56 30 C 56 44 52 56 44 60 Z" fill="#9DAE96"/>
+    <path d="M44 60 C 40 46 44 34 56 30 C 56 44 52 56 44 60 Z" fill="#FFFFFF" opacity="0.22"/>
+    <path d="M58 64 C 62 50 70 42 82 42 C 80 56 70 64 58 64 Z" fill="#8E9B86"/>
+    <path d="M58 64 C 62 50 70 42 82 42 C 80 56 70 64 58 64 Z" fill="#FFFFFF" opacity="0.20"/>
+    <path d="M38 52 C 50 50 64 46 76 36" stroke="#8E89AE" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <path d="M68 38 l9 9 15 -17" stroke="#9DAE96" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`,
-  // 空状态：还没有打卡记录
+  // 空状态：还没有打卡记录 —— 柔彩日历卡 + 小苗
   'empty-timeline': `<svg class="art" viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <circle cx="60" cy="45" r="34" fill="#EDEFFF"/>
-    <circle cx="94" cy="24" r="2.6" fill="#C9C4F8"/>
-    <circle cx="25" cy="60" r="2.2" fill="#DED9FF"/>
-    <rect x="34" y="30" width="52" height="38" rx="7" fill="#FFFFFF" stroke="#5A5FD4" stroke-width="2"/>
-    <path d="M44 20v10" stroke="#5A5FD4" stroke-width="2" stroke-linecap="round"/>
-    <path d="M76 20v10" stroke="#5A5FD4" stroke-width="2" stroke-linecap="round"/>
-    <path d="M34 42h52" stroke="#5A5FD4" stroke-width="2"/>
-    <path d="M47 53h8M65 53h8M47 61h8" stroke="#8F8EF5" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="60" cy="46" r="34" fill="#F1EEE8"/>
+    <rect x="38" y="30" width="44" height="34" rx="9" fill="#E7E3EC"/>
+    <path d="M38 41 a9 9 0 0 1 9 -9 h26 a9 9 0 0 1 9 9 z" fill="#9A95B5"/>
+    <path d="M47 27 v5M73 27 v5" stroke="#8E89AE" stroke-width="2.4" stroke-linecap="round"/>
+    <g stroke="#8E89AE" stroke-width="2" stroke-linecap="round">
+      <path d="M47 52 h6M58 52 h6M69 52 h6"/>
+    </g>
+    <path d="M60 64 C 58 56 60 50 60 44" stroke="#9DAE96" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9"/>
+    <path d="M58 54 C 50 51 45 54 42 60 C 50 62 55 59 58 54 Z" fill="#9DAE96"/>
   </svg>`,
 };
 
 export function artSVG(name) {
   return ART[name] || ART['empty-pot'];
+}
+
+// ---------------- 首页顶部 hero（水彩柔彩花卉，参考 NORA 风） ----------------
+// 无描边、低饱和粉彩、米色留白；蓝紫为主题花色，陶土/灰玫瑰/鼠尾草/燕麦为点缀。
+const HERO = `
+<svg class="hero__art" viewBox="0 0 360 150" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <!-- 柔和晕染底色（水彩感，无轮廓） -->
+  <circle cx="300" cy="34" r="74" fill="#C9C3DF" opacity="0.30"/>
+  <circle cx="58" cy="124" r="84" fill="#B9C6AE" opacity="0.26"/>
+  <circle cx="200" cy="20" r="42" fill="#E4DCC6" opacity="0.30"/>
+  <!-- 左侧细茎与叶 -->
+  <path d="M70 150 C 68 130 73 112 70 96" stroke="#9DAE96" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <path d="M70 120 C 59 116 50 121 45 130 C 57 132 66 129 70 120 Z" fill="#9DAE96"/>
+  <path d="M70 120 C 59 116 50 121 45 130 C 57 132 66 129 70 120 Z" fill="#FFFFFF" opacity="0.22"/>
+  <path d="M71 106 C 81 102 90 107 95 116 C 84 118 75 115 71 106 Z" fill="#9DAE96"/>
+  <path d="M71 106 C 81 102 90 107 95 116 C 84 118 75 115 71 106 Z" fill="#FFFFFF" opacity="0.22"/>
+  <!-- 左侧粉蓝小花苞 -->
+  <g transform="translate(72,86)">
+    <g fill="#A6AEC6">
+      <circle cx="0" cy="-7" r="5"/><circle cx="6.5" cy="-2" r="5"/><circle cx="4" cy="6" r="5"/><circle cx="-4" cy="6" r="5"/><circle cx="-6.5" cy="-2" r="5"/>
+    </g>
+    <circle cx="0" cy="0" r="2.6" fill="#EBDFC4"/>
+  </g>
+  <!-- 中央鸢尾（蓝紫，主题色） -->
+  <path d="M140 150 C 138 122 142 100 140 80" stroke="#9DAE96" stroke-width="2.6" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <g transform="translate(140,56)">
+    <path d="M0 20 C -18 8 -16 -22 0 -32 C 16 -22 18 8 0 20 Z" fill="#9A95B8"/>
+    <path d="M0 20 C -18 8 -16 -22 0 -32 C 16 -22 18 8 0 20 Z" fill="#FFFFFF" opacity="0.18"/>
+    <path d="M0 20 C -24 -2 -32 -18 -36 -32 C -19 -28 -7 -12 0 20 Z" fill="#8E89AE" opacity="0.95"/>
+    <path d="M0 20 C 24 -2 32 -18 36 -32 C 19 -28 7 -12 0 20 Z" fill="#8E89AE" opacity="0.95"/>
+    <ellipse cx="0" cy="2" rx="6" ry="9" fill="#D6C7A4"/>
+    <ellipse cx="-1" cy="-3" rx="2.6" ry="5" fill="#FFFFFF" opacity="0.5"/>
+  </g>
+  <!-- 右侧灰玫瑰小花丛 -->
+  <g transform="translate(248,74)">
+    <g fill="#C29CA0">
+      <circle cx="0" cy="-9" r="6"/><circle cx="8.5" cy="-3" r="6"/><circle cx="5.5" cy="7" r="6"/><circle cx="-5.5" cy="7" r="6"/><circle cx="-8.5" cy="-3" r="6"/>
+    </g>
+    <circle cx="0" cy="0" r="3.6" fill="#EBDFC4"/>
+  </g>
+  <g transform="translate(228,90) scale(0.8)">
+    <g fill="#C8A7AB">
+      <circle cx="0" cy="-9" r="6"/><circle cx="8.5" cy="-3" r="6"/><circle cx="5.5" cy="7" r="6"/><circle cx="-5.5" cy="7" r="6"/><circle cx="-8.5" cy="-3" r="6"/>
+    </g>
+    <circle cx="0" cy="0" r="3.6" fill="#EBDFC4"/>
+  </g>
+  <g transform="translate(268,92) scale(0.78)">
+    <g fill="#C8A7AB">
+      <circle cx="0" cy="-9" r="6"/><circle cx="8.5" cy="-3" r="6"/><circle cx="5.5" cy="7" r="6"/><circle cx="-5.5" cy="7" r="6"/><circle cx="-8.5" cy="-3" r="6"/>
+    </g>
+    <circle cx="0" cy="0" r="3.6" fill="#EBDFC4"/>
+  </g>
+  <!-- 右下鼠尾草枝叶 -->
+  <path d="M300 150 C 298 132 302 116 300 102" stroke="#9DAE96" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <g transform="translate(300,116)">
+    <path d="M0 0 C 12 -8 16 -26 6 -40 C -4 -26 -5 -10 0 0 Z" fill="#9DAE96"/>
+    <path d="M0 0 C 12 -8 16 -26 6 -40 C -4 -26 -5 -10 0 0 Z" fill="#FFFFFF" opacity="0.20"/>
+    <path d="M0 0 C 10 -6 14 -22 5 -34 C -4 -22 -5 -8 0 0 Z" fill="#8E9B86" transform="rotate(22)"/>
+  </g>
+  <!-- 漂浮的小点，留白呼吸 -->
+  <circle cx="200" cy="44" r="2" fill="#C29CA0" opacity="0.5"/>
+  <circle cx="320" cy="82" r="1.6" fill="#D6C7A4" opacity="0.55"/>
+  <circle cx="112" cy="34" r="1.6" fill="#9A95B8" opacity="0.45"/>
+  <circle cx="176" cy="112" r="2" fill="#9DAE96" opacity="0.45"/>
+</svg>`;
+
+export function heroSVG() {
+  return HERO;
+}
+
+// 吉祥物：一盆柔彩小花苗（用于空状态，给 App 一点性格；无描边、温和表情）
+const MASCOT = `
+<svg class="art" viewBox="0 0 120 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="60" cy="50" r="42" fill="#F1EEE8"/>
+  <!-- 茎 -->
+  <path d="M60 84 C 59 70 61 58 60 46" stroke="#9DAE96" stroke-width="2.6" fill="none" stroke-linecap="round" opacity="0.9"/>
+  <!-- 叶片 -->
+  <path d="M58 64 C 46 60 38 64 33 73 C 45 75 54 72 58 64 Z" fill="#9DAE96"/>
+  <path d="M58 64 C 46 60 38 64 33 73 C 45 75 54 72 58 64 Z" fill="#FFFFFF" opacity="0.22"/>
+  <path d="M62 58 C 73 53 82 57 87 66 C 75 68 66 65 62 58 Z" fill="#8E9B86"/>
+  <path d="M62 58 C 73 53 82 57 87 66 C 75 68 66 65 62 58 Z" fill="#FFFFFF" opacity="0.20"/>
+  <!-- 顶部小花（蓝紫主题） -->
+  <g transform="translate(60,40)">
+    <path d="M0 14 C -13 5 -12 -16 0 -23 C 12 -16 13 5 0 14 Z" fill="#9A95B8"/>
+    <path d="M0 14 C -13 5 -12 -16 0 -23 C 12 -16 13 5 0 14 Z" fill="#FFFFFF" opacity="0.18"/>
+    <ellipse cx="0" cy="1" rx="4" ry="6" fill="#D6C7A4"/>
+  </g>
+  <!-- 盆（无描边，柔紫） -->
+  <path d="M46 84 h28 l-4 21 a3 3 0 0 1 -3 3 h-14 a3 3 0 0 1 -3 -3 z" fill="#9A95B5"/>
+  <path d="M46 84 h28 l-1.4 7 H47.4 Z" fill="#B0ABC8"/>
+  <rect x="43" y="80" width="34" height="6" rx="3" fill="#8E89AE"/>
+  <ellipse cx="60" cy="83" rx="15" ry="3.4" fill="#B3A689"/>
+  <!-- 温和的小表情 -->
+  <circle cx="53" cy="98" r="1.7" fill="#5A5670"/>
+  <circle cx="67" cy="98" r="1.7" fill="#5A5670"/>
+  <path d="M53 102 q7 4 14 0" stroke="#5A5670" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>
+</svg>`;
+
+export function mascotSVG() {
+  return MASCOT;
 }
