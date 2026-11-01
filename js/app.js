@@ -3,7 +3,7 @@ import { plants as PStore, waterings as WStore, checkins as CStore, settings as 
 import { PLANTS, WATER_LEVEL, MONTHLY_CALENDAR, findRule } from './data.js';
 import { getWeather, vision, fileToDataURL, extractJSON } from './api.js';
 import { planAll, computeWatering, seasonOf, SEASON_LABEL, todayStr, addDays, diffDays, careAdvice, inferType, typeIcon, learnInterval, weeklyTasks } from './engine.js';
-import { iconSVG, weatherIcon, artSVG } from './icons.js';
+import { iconSVG, weatherIcon, artSVG, heroSVG, mascotSVG } from './icons.js';
 
 const state = {
   settings: { location: '', dashscopeKey: '' },
@@ -199,8 +199,7 @@ async function renderHome() {
 
   return `
     <div class="hero" aria-hidden="true">
-      <img class="hero__img" src="img/flower-hero.png" alt="" />
-      <span class="hero__veil"></span>
+      ${heroSVG()}
     </div>
     ${weatherCard}
     <div class="stats">
@@ -211,14 +210,14 @@ async function renderHome() {
     ${dueHtml}
     ${soonHtml}
     ${weekHtml}
-    ${all.length === 0 ? `<div class="empty">${artSVG('empty-pot')}还没有植物，点底部“添加”开始吧</div>` : ''}
+    ${all.length === 0 ? `<div class="empty">${mascotSVG()}还没有植物，点底部“添加”开始吧</div>` : ''}
   `;
 }
 
 // ---------------- 视图：我的植物 ----------------
 async function renderPlants() {
   const all = await PStore.all();
-  if (!all.length) return `<div class="empty">${artSVG('empty-pot')}还没有植物<br/>点底部“添加”通过拍照或订单截图自动录入</div>`;
+  if (!all.length) return `<div class="empty">${mascotSVG()}还没有植物<br/>点底部“添加”通过拍照或订单截图自动录入</div>`;
   const planned = planAll(all, state.weather);
   return `
     <div class="search"><input id="plant-search" placeholder="搜索植物名称…" /></div>
